@@ -1,36 +1,40 @@
-const db = require('../config/db');
+const { User } = require('../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// Fungsi untuk mendaftarkan pengguna baru
+// Fungsi untuk mendaftarkan pengguna baru ke dalam sistem
 const register = async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
-        // Validasi input kosong (Cegah data hantu)
+        // Memvalidasi masukan agar tidak ada data yang kosong
         if (!username || !email || !password) {
             return res.status(400).json({ message: "Semua kolom (username, email, password) wajib diisi!" });
         }
 
-        // Memeriksa apakah email sudah terdaftar di database
-        const [existingUser] = await db.query('SELECT * FROM Users WHERE email = ?', [email]);
-        if (existingUser.length > 0) {
+        // Memeriksa apakah alamat email sudah terdaftar di dalam basis data
+        const existingUser = await User.findOne({ 
+            where: { email: email } 
+        });
+        
+        if (existingUser) {
             return res.status(400).json({ message: "Email tersebut sudah terdaftar." });
         }
 
-        // Melakukan hashing pada kata sandi (Satpam Satu Arah)
+        // Melakukan proses hashing pada kata sandi untuk keamanan data
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Menyimpan data pengguna ke dalam tabel Users
-        const [result] = await db.query(
-            'INSERT INTO Users (username, email, password) VALUES (?, ?, ?)', 
-            [username, email, hashedPassword]
-        );
+        // Menyimpan data pengguna baru ke dalam tabel Users
+        const newUser = await User.create({
+            username: username,
+            email: email,
+            password: hashedPassword
+        });
 
         res.status(201).json({ 
             message: "Akun berhasil dibuat.", 
-            userId: result.insertId 
+            userId: newUser.user_id 
         });
 
     } catch (error) {
@@ -39,16 +43,18 @@ const register = async (req, res) => {
     }
 };
 
-// Fungsi untuk menghapus pengguna (Hanya bisa menghapus akun sendiri)
+// Fungsi untuk menghapus data pengguna dari basis data secara permanen
 const deleteUser = async (req, res) => {
     try {
-        // Ambil ID dari Token (req.user), bukan dari URL (req.params)
+        // Mengambil ID pengguna dari token otentikasi yang sedang aktif
         const idTarget = req.user.id; 
 
-        // Menjalankan query untuk menghapus data pengguna
-        const [result] = await db.query('DELETE FROM Users WHERE user_id = ?', [idTarget]);
+        // Menjalankan perintah penghapusan data berdasarkan ID pengguna
+        const deletedRows = await User.destroy({
+            where: { user_id: idTarget }
+        });
 
-        if (result.affectedRows === 0) {
+        if (deletedRows === 0) {
             return res.status(404).json({ message: "Pengguna tidak ditemukan." });
         }
 
@@ -60,34 +66,34 @@ const deleteUser = async (req, res) => {
     }
 };
 
-// Fungsi untuk proses login pengguna
+// Fungsi untuk mengautentikasi pengguna dan memberikan token akses
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Mencari data pengguna berdasarkan email
-        const [users] = await db.query('SELECT * FROM Users WHERE email = ?', [email]);
+        // Mencari data pengguna berdasarkan alamat email
+        const user = await User.findOne({ 
+            where: { email: email } 
+        });
         
-        if (users.length === 0) {
+        if (!user) {
             return res.status(404).json({ message: "Email tidak terdaftar." });
         }
 
-        const user = users[0];
-
-        // Memverifikasi kecocokan kata sandi
+        // Memverifikasi kecocokan antara kata sandi masukan dan kata sandi di basis data
         const isPasswordMatch = await bcrypt.compare(password, user.password);
         if (!isPasswordMatch) {
             return res.status(401).json({ message: "Kata sandi yang Anda masukkan salah." });
         }
 
-        // Menghasilkan token JWT jika autentikasi berhasil
+        // Menghasilkan token JWT apabila autentikasi dinyatakan berhasil
         const token = jwt.sign(
             { id: user.user_id, email: user.email },
             process.env.JWT_SECRET,
             { expiresIn: '1d' }
         );
 
-        // Kirim data user bersamaan dengan token
+        // Mengirimkan token beserta informasi dasar pengguna sebagai respons
         res.status(200).json({
             message: "Login berhasil.",
             token: token,

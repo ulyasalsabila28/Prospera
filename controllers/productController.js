@@ -1,10 +1,12 @@
-const db = require('../config/db');
+const { Product } = require('../models');
 
-// 1. Mengambil semua produk milik user yang sedang login
+// Mengambil seluruh data produk berdasarkan ID pengguna yang sedang masuk.
 const getAllProducts = async (req, res) => {
     try {
         const userId = req.user.id; 
-        const [products] = await db.query('SELECT * FROM Products WHERE user_id_fk = ?', [userId]);
+        const products = await Product.findAll({
+            where: { user_id_fk: userId }
+        });
         res.status(200).json(products);
     } catch (error) {
         console.error(error);
@@ -12,43 +14,51 @@ const getAllProducts = async (req, res) => {
     }
 };
 
-// 2. Mengambil satu produk secara spesifik 
+// Mengambil satu data produk spesifik berdasarkan ID produk dan ID pengguna.
 const getProductById = async (req, res) => {
     try {
         const userId = req.user.id;
         const productId = req.params.id;
 
-        const [products] = await db.query('SELECT * FROM Products WHERE product_id = ? AND user_id_fk = ?', [productId, userId]);
+        const product = await Product.findOne({
+            where: { 
+                product_id: productId, 
+                user_id_fk: userId 
+            }
+        });
         
-        if (products.length === 0) {
+        if (!product) {
             return res.status(404).json({ message: "Produk tidak ditemukan." });
         }
-        res.status(200).json(products[0]);
+        res.status(200).json(product);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Terjadi kesalahan internal pada server." });
     }
 };
 
-// 3. Menambah produk baru
+// Menambahkan data produk baru ke dalam basis data.
 const createProduct = async (req, res) => {
     try {
         const userId = req.user.id; 
         const { product_name, product_cost, product_price, product_stock } = req.body;
         
-        // Validasi input agar tidak ada data kosong yang masuk ke database
+        // Memvalidasi masukan agar tidak ada data kosong.
         if (!product_name || product_cost === undefined || product_price === undefined) {
             return res.status(400).json({ message: "Nama, Harga Modal, dan Harga Jual wajib diisi!" });
         }
 
-        const [result] = await db.query(
-            'INSERT INTO Products (user_id_fk, product_name, product_cost, product_price, product_stock) VALUES (?, ?, ?, ?, ?)',
-            [userId, product_name, product_cost, product_price, product_stock || 0]
-        );
+        const newProduct = await Product.create({
+            user_id_fk: userId,
+            product_name: product_name,
+            product_cost: product_cost,
+            product_price: product_price,
+            product_stock: product_stock || 0
+        });
 
         res.status(201).json({ 
             message: "Produk berhasil ditambahkan ke toko Anda.", 
-            productId: result.insertId 
+            productId: newProduct.product_id 
         });
     } catch (error) {
         console.error(error);
@@ -56,24 +66,34 @@ const createProduct = async (req, res) => {
     }
 };
 
-// 4. Memperbarui produk 
+// Memperbarui data produk yang sudah ada berdasarkan ID produk.
 const updateProduct = async (req, res) => {
     try {
         const userId = req.user.id;
         const productId = req.params.id;
         const { product_name, product_cost, product_price, product_stock } = req.body;
 
-        // Validasi input sebelum diupdate
+        // Memvalidasi masukan sebelum proses pembaruan.
         if (!product_name || product_cost === undefined || product_price === undefined) {
             return res.status(400).json({ message: "Nama, Harga Modal, dan Harga Jual tidak boleh kosong!" });
         }
 
-        const [result] = await db.query(
-            'UPDATE Products SET product_name = ?, product_cost = ?, product_price = ?, product_stock = ? WHERE product_id = ? AND user_id_fk = ?',
-            [product_name, product_cost, product_price, product_stock, productId, userId]
+        const [updatedRows] = await Product.update(
+            {
+                product_name: product_name,
+                product_cost: product_cost,
+                product_price: product_price,
+                product_stock: product_stock
+            },
+            {
+                where: { 
+                    product_id: productId, 
+                    user_id_fk: userId 
+                }
+            }
         );
 
-        if (result.affectedRows === 0) {
+        if (updatedRows === 0) {
             return res.status(404).json({ message: "Produk tidak ditemukan atau bukan milik Anda." });
         }
         res.status(200).json({ message: "Data produk berhasil diperbarui." });
@@ -83,18 +103,20 @@ const updateProduct = async (req, res) => {
     }
 };
 
-// 5. Menghapus produk
+// Menghapus data produk dari basis data.
 const deleteProduct = async (req, res) => {
     try {
         const userId = req.user.id;
         const productId = req.params.id;
 
-        const [result] = await db.query(
-            'DELETE FROM Products WHERE product_id = ? AND user_id_fk = ?', 
-            [productId, userId]
-        );
+        const deletedRows = await Product.destroy({
+            where: { 
+                product_id: productId, 
+                user_id_fk: userId 
+            }
+        });
 
-        if (result.affectedRows === 0) {
+        if (deletedRows === 0) {
             return res.status(404).json({ message: "Produk tidak ditemukan atau bukan milik Anda." });
         }
         res.status(200).json({ message: "Produk berhasil dihapus." });

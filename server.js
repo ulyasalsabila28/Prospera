@@ -2,8 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
-// Menginisialisasi koneksi basis data
-require('./config/db'); 
+// Mengimpor koneksi Sequelize dari folder models (Menggantikan config/db lama)
+const { sequelize } = require('./models'); 
 
 const app = express();
 
@@ -41,6 +41,14 @@ app.use((err, req, res, next) => {
 
 // Menjalankan peladen pada port yang telah dikonfigurasi
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server Node.js berjalan pada port ${PORT}`);
-});
+
+sequelize.authenticate()
+    .then(() => {
+        console.log('Koneksi ke basis data MySQL (Sequelize) berhasil didirikan.');
+        app.listen(PORT, () => {
+            console.log(`Server Node.js berjalan pada port ${PORT}`);
+        });
+    })
+    .catch((err) => {
+        console.error('Gagal terhubung ke basis data:', err);
+    });

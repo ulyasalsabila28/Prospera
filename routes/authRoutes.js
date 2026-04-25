@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const verifyToken = require('../middleware/authMiddleware'); // Import satpam
+const verifyToken = require('../middleware/authMiddleware'); 
 const { register, deleteUser, login } = require('../controllers/authController');
 
 // Rute untuk registrasi akun baru
