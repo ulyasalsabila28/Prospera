@@ -2,7 +2,6 @@ const { Transaction, TransactionDetail, Product } = require("../models");
 const { Op, fn, col, literal } = require("sequelize");
 const { ExcelReport, CsvReport } = require("../services/reportService"); // <-- IMPORT SERVICE EXCEL & CSV
 
-
 const getDateFilter = (startDate, endDate) => {
     if (startDate && endDate) {
         const start = new Date(startDate);
@@ -232,7 +231,8 @@ const getTopProduct = async (req, res) => {
         const rows = await TransactionDetail.findAll({
             attributes: [
                 [fn("SUM", col("quantity")), "sold"],
-                [fn("SUM", literal("quantity * selling_price")), "revenue"]
+                [fn("SUM", literal("quantity * selling_price")), "revenue"],
+                [literal("SUM((selling_price - capital_cost) * quantity)"), "laba"]
             ],
             include: [
                 {
@@ -260,34 +260,37 @@ const getTopProduct = async (req, res) => {
             product_id: item["Product.product_id"],
             product_name: item["Product.product_name"],
             sold: parseInt(item.sold) || 0,
-            revenue: parseFloat(item.revenue) || 0
+            revenue: parseFloat(item.revenue) || 0,
+            laba: parseFloat(item.laba) || 0
         })));
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// 4. MONTHLY REPORT
+// 4. MONTHLY REPORT 
 const getMonthly = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         const userId = req.user.id;
 
-        const timeZoneAdj = "CONVERT_TZ(transaction_datetime, '+00:00', '+07:00')";
-
-        const rows = await Transaction.findAll({
-            where: {
-                ...getDateFilter(startDate, endDate),
-                user_id_fk: userId,
-                status: 'success' 
-            },
+        const rows = await TransactionDetail.findAll({
+            include: [{
+                model: Transaction,
+                attributes: [],
+                where: {
+                    ...getDateFilter(startDate, endDate),
+                    user_id_fk: userId,
+                    status: 'success' 
+                }
+            }],
             attributes: [
-                [fn("DATE_FORMAT", col("transaction_datetime"), "%Y-%m"), "month"],
-                [fn("SUM", col("total_amount")), "revenue"],
-                [fn("COUNT", col("*")), "total_transaction"],
-                [fn("AVG", col("total_amount")), "average_sale"]
+                [fn("DATE_FORMAT", col("Transaction.transaction_datetime"), "%Y-%m"), "month"],
+                [literal(`SUM(selling_price * quantity)`), "revenue"],
+                [literal(`SUM(CASE WHEN selling_price > capital_cost THEN (selling_price - capital_cost) * quantity ELSE 0 END)`), "laba_bersih"],
+                [fn("COUNT", fn("DISTINCT", col("Transaction.transaction_id"))), "total_transaction"]
             ],
-            group: [fn("DATE_FORMAT", col("transaction_datetime"), "%Y-%m")],
+            group: [fn("DATE_FORMAT", col("Transaction.transaction_datetime"), "%Y-%m")],
             order: [[literal("month"), "ASC"]],
             raw: true
         });
@@ -295,8 +298,9 @@ const getMonthly = async (req, res) => {
         res.json(rows.map(item => ({
             month: item.month,
             revenue: parseFloat(item.revenue) || 0,
+            laba_bersih: parseFloat(item.laba_bersih) || 0, 
             total_transaction: parseInt(item.total_transaction) || 0,
-            average_sale: parseFloat(item.average_sale) || 0
+            average_sale: parseInt(item.total_transaction) > 0 ? (parseFloat(item.revenue) / parseInt(item.total_transaction)) : 0
         })));
     } catch (error) {
         res.status(500).json({ message: error.message });
