@@ -4,7 +4,7 @@ export default function Protected({ children }) {
   const isLogin = localStorage.getItem("isLogin");
 
   if (!isLogin) {
-    return <Navigate to="/products" />;
+    return <Navigate to="/login" />;
   }
 
   return children;

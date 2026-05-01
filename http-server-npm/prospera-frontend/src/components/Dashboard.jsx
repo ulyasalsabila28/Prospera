@@ -5,55 +5,34 @@ export default function Dashboard({ children }) {
 
   const menu = [
     { path: "/products", label: "Products", icon: "bi-box" },
-    { path: "/inventory", label: "Inventory", icon: "bi-exclamation-triangle" },
     { path: "/transaction", label: "Transactions", icon: "bi-archive-fill" }
   ];
 
   return (
-    <div style={{ display: "flex" }}>
-
-      {/* SIDEBAR */}
-      <div style={{
-        width: "240px",
-        minHeight: "100vh",
-        padding: "20px",
-        background: "linear-gradient(to bottom, var(--blue-primary), var(--green-primary))",
-        color: "white"
-      }}>
-        <h2 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <i className="bi bi-stack" style={{ fontSize: "24px" }}></i>
+    <>
+      <div className="sidebar">
+        <h2 className="logo">
+          <i className="bi bi-stack"></i>
           Prospera BI
         </h2>
 
-        {menu.map(m => (
+        {menu.map((m) => (
           <Link
             key={m.path}
             to={m.path}
-            style={{
-              display: "block",
-              padding: "10px",
-              marginTop: "10px",
-              borderRadius: "8px",
-              background: loc.pathname === m.path
-                ? "rgba(255,255,255,0.2)"
-                : "transparent",
-              color: "white",
-              textDecoration: "none"
-            }}
+            className={`nav-link ${loc.pathname === m.path ? "active" : ""}`}
           >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <i className={`bi ${m.icon}`}></i>
-            <span>{m.label}</span>
-          </div>
+            <div className="menu-item">
+              <i className={`bi ${m.icon}`}></i>
+              <span>{m.label}</span>
+            </div>
           </Link>
         ))}
       </div>
 
-      {/* CONTENT */}
-      <div style={{ flex: 1, padding: "30px" }}>
+      <div className="main-content">
         {children}
       </div>
-
-    </div>
+    </>
   );
 }

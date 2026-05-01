@@ -38,14 +38,16 @@ const createTransaction = async (req, res) => {
                 throw new Error(`Stok ${product.product_name} tidak mencukupi. Sisa stok: ${product.product_stock}`);
             }
 
-            const sub_total = product.product_price * item.quantity;
+            const capital_cost = item.capital_cost ?? product.product_cost;
+            const selling_price = item.selling_price ?? product.product_price;
+            const sub_total = selling_price * item.quantity;
             total_amount += sub_total;
 
             validItems.push({
                 product_id: product.product_id,
                 quantity: item.quantity,
-                capital_cost: product.product_cost, 
-                selling_price: product.product_price, 
+                capital_cost: capital_cost,
+                selling_price: selling_price,
                 sub_total: sub_total
             });
         }

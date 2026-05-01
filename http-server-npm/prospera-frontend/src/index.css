@@ -100,6 +100,10 @@ html, body {
     padding: 2rem 1.5rem;
 }
 
+.sidebar a {
+  text-decoration: none !important;
+}
+
 .main-content {
     margin-left: 260px;
     padding: 2rem;
@@ -296,8 +300,25 @@ html, body {
   font-weight: 500;
 }
 
-.button:hover {
+.button-delete {
+  background: var(--green-medium);
+  color: white;
+
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.button:hover{
   background: var(--blue-light);
+  color: var(--green-light);
+}
+
+.button-delete:hover {
+  background: var(var(--green-light));
   color: var(--green-light);
 }
 

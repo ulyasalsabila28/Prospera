@@ -7,27 +7,38 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const nav = useNavigate();
 
-  const login = async () => {
+const login = async () => {
+    console.log("CLICK LOGIN");
+
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
 
+      // Ekstrak data JSON yang dikirim dari backend (termasuk Token JWT)
+      const data = await res.json(); 
+      console.log("STATUS:", res.status);
+
       if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem("isLogin", "true");
-        localStorage.setItem("authToken", data.token);
-        localStorage.setItem("userData", JSON.stringify(data.user));
+        console.log("LOGIN SUCCESS");
+
+        // Simpan token JWT dan info user ke localStorage
+        localStorage.setItem("token", data.token); 
+        localStorage.setItem("user", JSON.stringify(data.user)); 
+        
+        localStorage.setItem("isLogin", "true"); 
+
         nav("/products");
+
       } else {
-        const error = await res.json().catch(() => ({}));
-        alert(error.message || "Login gagal");
+        console.log("LOGIN FAILED");
+        alert(data.message || "Login gagal"); 
       }
+
     } catch (err) {
-      console.error("Login error:", err);
-      alert("Error: " + err.message);
+      console.log("ERROR:", err);
     }
   };
 

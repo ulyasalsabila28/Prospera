@@ -105,8 +105,9 @@ const login = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Kesalahan pada proses login:", error);
-        res.status(500).json({ message: "Terjadi kesalahan internal pada server." });
+        console.error("Kesalahan pada proses login:", error.message);
+        console.error("Stack trace:", error.stack);
+        res.status(500).json({ message: "Terjadi kesalahan internal pada server.", error: error.message });
     }
 };
 

@@ -1,0 +1,2 @@
+CREATE DATABASE prospera;
+CREATE DATABASE prospera_db;
