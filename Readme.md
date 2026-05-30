@@ -37,17 +37,26 @@ buka **dua terminal** secara bersamaan (satu untuk Backend, satu untuk Frontend)
 
 Sistem *backend* ini dibangun dengan arsitektur MVC (Model-View-Controller) yang dimodifikasi untuk API (menggunakan Routes dan Controllers). Berikut adalah penjelasan struktur folder utamanya:
 ```
-prospera-backend/
-├── config/           # Konfigurasi koneksi database untuk ORM Sequelize (config.json)
-├── controllers/      # Berisi logika utama (misal: perhitungan analitik, forecast, dan operasi CRUD)
-├── middleware/       # Berisi lapisan keamanan (seperti verifikasi token JWT untuk memproteksi endpoint)
-├── migrations/       # Skrip otomatisasi untuk pembuatan dan perubahan struktur tabel database
-├── models/           # Definisi skema tabel menggunakan ORM Sequelize (User, Product, Transaction, dll)
-├── routes/           # Daftar lengkap endpoint API (auth, products, transactions, analytics, forecast, inventory)
-├── seeders/          # Skrip penyuntikan data awal (dummy data) untuk keperluan pengujian
-├── services/         # Layanan tambahan dengan menerapkan konsep OOP
-├── .env              # File konfigurasi variabel environment
-└── server.js         # Entry point (titik awal) untuk menjalankan keseluruhan server aplikasi
+Prospera/
+├── backend/
+│   ├── config/       # Konfigurasi Sequelize ORM
+│   ├── controllers/  # Logika bisnis (Analitik, CRUD, Export)
+│   ├── middleware/   # Keamanan JWT & Validasi Anti-IDOR
+│   ├── migrations/   # Skema struktur database
+│   ├── models/       # Definisi Tabel (Sequelize Models)
+│   ├── routes/       # Definisi Endpoint API
+│   ├── seeders/      # Penyuntikan data awal (Dummy data)
+│   ├── services/     # Logic OOP & Class Inheritance (Export System)
+│   ├── .env          # Variabel Environment (Konfigurasi DB)
+│   └── server.js     # Main Entry Point Backend
+├── frontend/
+│   ├── src/          # Source code React (Components, Pages, Assets)
+│   ├── public/       # File statis (Logo, Icon)
+│   ├── .env          # Konfigurasi API URL
+│   └── index.html    # Entry point HTML
+├── db.sql            # Backup Database MySQL (siap import)
+├── tim.txt           # Data kelompok & rincian teknologi
+└── README.md         # Dokumentasi lengkap proyek
 ```
 ## Akun Uji
 Gunakan akun di bawah ini untuk melewati proses autentikasi (Login). Akun ini sudah otomatis terdaftar di database saat Anda mengeksekusi perintah *seeder*

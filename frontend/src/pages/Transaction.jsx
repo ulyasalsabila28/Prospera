@@ -15,6 +15,11 @@ export default function Transaction() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // --- STATE BARU UNTUK CUSTOM SEARCH DROPDOWN ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // -----------------------------------------------
+
   const fetchProducts = async () => {
     try {
       const data = await authFetch("/products");
@@ -40,6 +45,12 @@ export default function Transaction() {
     fetchProducts();
     fetchHistory();
   }, []);
+
+  // --- LOGIKA FILTER PENCARIAN PRODUK ---
+  const filteredProducts = products.filter((p) =>
+    p.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  // --------------------------------------
 
   const selectedProduct = products.find((p) => String(p.product_id) === String(selectedProductId));
 
@@ -85,6 +96,7 @@ export default function Transaction() {
     ]);
 
     setSelectedProductId("");
+    setSearchTerm(""); // Reset text pencarian
     setQuantity("");
     setModal("");
     setHargaJual("");
@@ -155,17 +167,76 @@ export default function Transaction() {
           <h3>Tambah Item Transaksi</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px", alignItems: "end" }}>
-              <div>
+              
+              {/* --- BAGIAN CUSTOM SEARCH DROPDOWN --- */}
+              <div style={{ position: "relative" }}>
                 <label style={{ display: "block", marginBottom: "6px" }}>Pilih Produk</label>
-                <select className="input" value={selectedProductId} onChange={(e) => setSelectedProductId(e.target.value)}>
-                  <option value="">Pilih Produk</option>
-                  {products.map((product) => (
-                    <option key={product.product_id} value={product.product_id}>
-                      {product.product_name} (Stok: {product.product_stock})
-                    </option>
-                  ))}
-                </select>
+                <input
+                  className="input"
+                  type="text"
+                  placeholder="Ketik untuk mencari produk..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setIsDropdownOpen(true);
+                    if (e.target.value === "") {
+                      setSelectedProductId(""); // Reset ID jika dihapus
+                    }
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  // Gunakan setTimeout agar onClick pada list item sempat dieksekusi sebelum dropdown tertutup
+                  onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                  style={{ width: "100%" }}
+                />
+                
+                {isDropdownOpen && (
+                  <ul 
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      right: 0,
+                      background: "white",
+                      border: "1px solid #ced4da",
+                      borderRadius: "8px",
+                      maxHeight: "250px",
+                      overflowY: "auto",
+                      zIndex: 10,
+                      listStyle: "none",
+                      padding: 0,
+                      margin: "4px 0 0 0",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                    }}
+                  >
+                    {filteredProducts.length > 0 ? (
+                      filteredProducts.map((product) => (
+                        <li
+                          key={product.product_id}
+                          style={{
+                            padding: "10px 16px",
+                            cursor: "pointer",
+                            borderBottom: "1px solid #f3f4f6",
+                            backgroundColor: selectedProductId === product.product_id ? "#eef2ff" : "white"
+                          }}
+                          onMouseDown={(e) => e.preventDefault()} // Mencegah onBlur input teraplikasi lebih dulu
+                          onClick={() => {
+                            setSelectedProductId(product.product_id);
+                            setSearchTerm(product.product_name);
+                            setIsDropdownOpen(false);
+                          }}
+                        >
+                          {product.product_name} (Stok: {product.product_stock})
+                        </li>
+                      ))
+                    ) : (
+                      <li style={{ padding: "10px 16px", color: "#6B7280", fontStyle: "italic" }}>
+                        Produk tidak ditemukan...
+                      </li>
+                    )}
+                  </ul>
+                )}
               </div>
+              {/* -------------------------------------- */}
 
               <div>
                 <label style={{ display: "block", marginBottom: "6px" }}>Quantity</label>

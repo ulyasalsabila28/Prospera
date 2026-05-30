@@ -1,0 +1,42 @@
+a).Nama Tim: Berbi
+
+b).anggota:
+-Nikita ho (241110859) 
+-Stefani Evelyn Sukamto (241110227) 
+-Ulya Salsabila (241110485)
+-Chiquita Jesslyn Giantito (241111605)
+-Irma Tiara (241112440)
+
+c). *   Frontend: React.js (https://react.dev/) dengan Vite (https://vitejs.dev/) dan React Router (https://reactrouter.com/)
+*   Gaya & Layout: Bootstrap 5 (https://getbootstrap.com/) & Google Fonts Inter (https://fonts.google.com/specimen/Inter)
+*   Ikon: FontAwesome 6 (https://fontawesome.com/) & Bootstrap Icons (https://icons.getbootstrap.com/)
+*   Grafik: Chart.js (https://www.chartjs.org/) melalui React-Chartjs-2 (https://react-chartjs-2.js.org/)
+*   Backend: Node.js (https://nodejs.org/) & Express.js (https://expressjs.com/)
+*   Database Management: Sequelize ORM (https://sequelize.org/)
+*   Keamanan & Autentikasi: JSON Web Token / JWT (https://jwt.io/) & bcryptjs (https://www.npmjs.com/package/bcryptjs)
+*   Utilitas Laporan: ExcelJS (https://www.npmjs.com/package/exceljs)
+*   Konfigurasi & Konektivitas: Dotenv (https://www.npmjs.com/package/dotenv) & CORS (https://www.npmjs.com/package/cors)
+
+
+d). 
+*   Authentication System: Sistem login yang diamankan berlapis menggunakan JSON Web Token (JWT) dan algoritma enkripsi password menggunakan Bcrypt.
+
+*   Authorizations: Menerapkan pengamanan anti-IDOR (Insecure Direct Object Reference). Sistem melakukan validasi otoritas dengan mengekstrak ID secara internal dari payload token, bukan mengambilnya dari parameter URL yang mudah dimanipulasi.
+
+*   Product Management: Modul pengelolaan data produk yang saling berelasi erat dengan riwayat transaksi secara aman.
+
+*   Transaction Engine: Mesin transaksi yang dilengkapi dengan fitur Row-Level Locking (t.LOCK.UPDATE) dan sistem Rollback otomatis (sequelize.transaction()). Inovasi ini menjamin integritas data dan mencegah race condition (bentrok data jika ada dua transaksi di detik yang sama).
+
+*   Profit dan Loss Tracking: Sistem perhitungan otomatis untuk memantau margin keuntungan bersih dan modal dari setiap produk.
+
+*   Top Performance: Menyajikan analisis peringkat produk dengan performa penjualan terbaik.
+
+*   Time Series Analysis: Pemantauan tren penjualan dan performa bisnis secara visual berdasarkan pergerakan waktu menggunakan integrasi Chart.js.
+
+*   Sales Summary: Ringkasan komprehensif mengenai total transaksi, omzet pendapatan, dan total profit pengguna.
+
+*   Export to CSV/Excel: Fitur unggulan yang dirancang dengan manajemen memori tingkat lanjut. File tidak dibuat secara fisik di hardisk server, melainkan di-generate dalam bentuk Buffer Stream lalu dikirim ke browser melalui Header Manipulation (Content-Disposition: attachment). Struktur kodenya juga mengimplementasikan pola arsitektur OOP yaitu Class Inheritance agar sangat efisien.
+
+*   Inventory Alert: Indikator dan peringatan cerdas otomatis yang menyala ketika stok produk sudah berada pada batas minimum.
+
+*   Sales Forecasting: Fitur prediksi cerdas yang membantu pengguna memproyeksikan potensi penjualan di masa depan, memberikan insight bisnis yang bernilai untuk pengambilan keputusan.
