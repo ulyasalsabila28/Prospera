@@ -21,6 +21,16 @@ export default function Transaction() {
 
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState("ALL");
+
+  const [dateFilterType, setDateFilterType] = useState("ALL"); 
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
+
+  // --- TAMBAHAN BARU: State untuk pencarian riwayat produk ---
+  const [historySearchTerm, setHistorySearchTerm] = useState("");
 
   const fetchProducts = async () => {
     try {
@@ -31,10 +41,34 @@ export default function Transaction() {
     }
   };
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (type = dateFilterType, start = customStartDate, end = customEndDate) => {
     setLoading(true);
     try {
-      const data = await authFetch("/transactions/history");
+      let url = "/transactions/history";
+      let queryParams = [];
+      const today = new Date();
+
+      if (type === "TODAY") {
+        const offset = today.getTimezoneOffset() * 60000;
+        const localDate = (new Date(today - offset)).toISOString().split('T')[0];
+        queryParams.push(`start=${localDate}`);
+        queryParams.push(`end=${localDate}`);
+      } else if (type === "MONTH") {
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
+        queryParams.push(`start=${year}-${month}-01`);
+        queryParams.push(`end=${year}-${month}-${lastDay}`);
+      } else if (type === "CUSTOM" && start && end) {
+        queryParams.push(`start=${start}`);
+        queryParams.push(`end=${end}`);
+      }
+
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join('&')}`;
+      }
+
+      const data = await authFetch(url);
       setHistory(Array.isArray(data) ? data : []);
     } catch (error) {
       setMessage(error.message);
@@ -45,8 +79,21 @@ export default function Transaction() {
 
   useEffect(() => {
     fetchProducts();
-    fetchHistory();
+    fetchHistory("ALL", "", "");
   }, []);
+
+  const handleDateFilterChange = (type) => {
+    setDateFilterType(type);
+    if (type !== "CUSTOM") {
+      setIsDateMenuOpen(false);
+      fetchHistory(type, "", "");
+    }
+  };
+
+  const applyCustomDate = () => {
+    setIsDateMenuOpen(false);
+    fetchHistory("CUSTOM", customStartDate, customEndDate);
+  };
 
   const filteredProducts = products.filter((p) =>
     p.product_name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -120,7 +167,7 @@ export default function Transaction() {
     ]);
 
     setSelectedProductId("");
-    setSearchTerm(""); // Reset text pencarian
+    setSearchTerm(""); 
     setQuantity("");
     setModal("");
     setHargaJual("");
@@ -186,13 +233,27 @@ export default function Transaction() {
       setMessage(`Transaksi berhasil. Total: Rp${response.total_belanja}`);
       setCartItems([]);
       fetchProducts();
-      fetchHistory();
+      fetchHistory(); 
     } catch (error) {
       setMessage(error.message);
     } finally {
       setSaving(false);
     }
   };
+
+  // --- TAMBAHAN BARU: Logika filter ganda (Tab + Pencarian Produk) ---
+  const filteredHistory = history.filter((tx) => {
+    // 1. Cek filter Tab (Semua, Penjualan, Restock)
+    const matchTab = activeTab === "ALL" || getTransactionTypeLabel(tx) === activeTab;
+    
+    // 2. Cek filter Pencarian Produk (Mencari di dalam TransactionDetails)
+    const matchSearch = tx.TransactionDetails?.some(item => 
+      item.Product?.product_name?.toLowerCase().includes(historySearchTerm.toLowerCase())
+    );
+
+    return matchTab && (historySearchTerm === "" || matchSearch);
+  });
+  // -------------------------------------------------------------------
 
   return (
       <div className="card">
@@ -223,9 +284,7 @@ export default function Transaction() {
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
                     setIsDropdownOpen(true);
-                    if (e.target.value === "") {
-                      setSelectedProductId(""); 
-                    }
+                    if (e.target.value === "") setSelectedProductId(""); 
                   }}
                   onFocus={() => setIsDropdownOpen(true)}
                   onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
@@ -233,34 +292,12 @@ export default function Transaction() {
                 />
                 
                 {isDropdownOpen && (
-                  <ul 
-                    style={{
-                      position: "absolute",
-                      top: "100%",
-                      left: 0,
-                      right: 0,
-                      background: "white",
-                      border: "1px solid #ced4da",
-                      borderRadius: "8px",
-                      maxHeight: "250px",
-                      overflowY: "auto",
-                      zIndex: 10,
-                      listStyle: "none",
-                      padding: 0,
-                      margin: "4px 0 0 0",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
-                    }}
-                  >
+                  <ul style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "white", border: "1px solid #ced4da", borderRadius: "8px", maxHeight: "250px", overflowY: "auto", zIndex: 10, listStyle: "none", padding: 0, margin: "4px 0 0 0", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                     {filteredProducts.length > 0 ? (
                       filteredProducts.map((product) => (
                         <li
                           key={product.product_id}
-                          style={{
-                            padding: "10px 16px",
-                            cursor: "pointer",
-                            borderBottom: "1px solid #f3f4f6",
-                            backgroundColor: selectedProductId === product.product_id ? "#eef2ff" : "white"
-                          }}
+                          style={{ padding: "10px 16px", cursor: "pointer", borderBottom: "1px solid #f3f4f6", backgroundColor: selectedProductId === product.product_id ? "#eef2ff" : "white" }}
                           onMouseDown={(e) => e.preventDefault()} 
                           onClick={() => {
                             setSelectedProductId(product.product_id);
@@ -272,9 +309,7 @@ export default function Transaction() {
                         </li>
                       ))
                     ) : (
-                      <li style={{ padding: "10px 16px", color: "#6B7280", fontStyle: "italic" }}>
-                        Produk tidak ditemukan...
-                      </li>
+                      <li style={{ padding: "10px 16px", color: "#6B7280", fontStyle: "italic" }}>Produk tidak ditemukan...</li>
                     )}
                   </ul>
                 )}
@@ -294,25 +329,19 @@ export default function Transaction() {
                 <label style={{ display: "block", marginBottom: "6px" }}>Quantity</label>
                 <input className="input" type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="Qty" />
               </div>
-
               <div>
                 <label style={{ display: "block", marginBottom: "6px" }}>Modal</label>
                 <input className="input" type="number" min="0" step="0.01" value={modal} onChange={(e) => setModal(e.target.value)} placeholder="Modal" />
               </div>
-
               <div>
                 <label style={{ display: "block", marginBottom: "6px" }}>{transactionType === "sell" ? "Harga Jual" : "Harga Beli"}</label>
                 <input className="input" type="number" min="0" step="0.01" value={hargaJual} onChange={(e) => setHargaJual(e.target.value)} placeholder={transactionType === "sell" ? "Harga Jual" : "Harga Beli"} />
               </div>
-
               <div>
                 <label style={{ display: "block", marginBottom: "6px" }}>Datetime (ops)</label>
                 <input className="input" type="datetime-local" value={datetime} onChange={(e) => setDatetime(e.target.value)} />
               </div>
-
-              <button className="button" style={{ height: "42px" }} onClick={addItem}>
-                + Tambah
-              </button>
+              <button className="button" style={{ height: "42px" }} onClick={addItem}>+ Tambah</button>
             </div>
           </div>
         </div>
@@ -352,9 +381,7 @@ export default function Transaction() {
                         <td style={{ padding: "10px" }}>{item.datetime ? new Date(item.datetime).toLocaleString() : "-"}</td>
                         <td style={{ padding: "10px" }}>Rp{item.hargaJual * item.quantity}</td>
                         <td style={{ padding: "10px" }}>
-                          <button className="button" style={{ background: "#EF4444", color: "white" }} onClick={() => removeItem(index)}>
-                            Hapus
-                          </button>
+                          <button className="button" style={{ background: "#EF4444", color: "white" }} onClick={() => removeItem(index)}>Hapus</button>
                         </td>
                       </tr>
                     );
@@ -365,9 +392,7 @@ export default function Transaction() {
           )}
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px", flexWrap: "wrap", gap: "12px" }}>
-            <div>
-              <strong>Total:</strong> Rp{totalAmount}
-            </div>
+            <div><strong>Total:</strong> Rp{totalAmount}</div>
             <button className="button" onClick={saveTransaction} disabled={saving || cartItems.length === 0}>
               {saving ? "Menyimpan..." : "Simpan Transaksi"}
             </button>
@@ -375,11 +400,70 @@ export default function Transaction() {
         </div>
 
         <div className="card">
-          <h3>Riwayat Transaksi</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+            <h3 style={{ margin: 0 }}>Riwayat Transaksi</h3>
+            
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              
+              {/* --- TAMBAHAN BARU: Kotak Pencarian Riwayat Produk --- */}
+              <input 
+                className="input" 
+                placeholder="🔍 Cari transaksi produk..." 
+                style={{ width: "220px", padding: "6px 12px" }}
+                value={historySearchTerm}
+                onChange={(e) => setHistorySearchTerm(e.target.value)}
+              />
+              {/* ----------------------------------------------------- */}
+
+              <div style={{ display: "flex", gap: "8px", background: "#F3F4F6", padding: "4px", borderRadius: "10px" }}>
+                <button onClick={() => setActiveTab("ALL")} style={{ padding: "6px 16px", border: "none", background: activeTab === "ALL" ? "white" : "transparent", color: activeTab === "ALL" ? "#1F2937" : "#6B7280", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "ALL" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Semua</button>
+                <button onClick={() => setActiveTab("SELL")} style={{ padding: "6px 16px", border: "none", background: activeTab === "SELL" ? "#22C55E" : "transparent", color: activeTab === "SELL" ? "white" : "#6B7280", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "SELL" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Penjualan</button>
+                <button onClick={() => setActiveTab("BUY")} style={{ padding: "6px 16px", border: "none", background: activeTab === "BUY" ? "#EF4444" : "transparent", color: activeTab === "BUY" ? "white" : "#6B7280", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "BUY" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Restock</button>
+              </div>
+
+              <div style={{ position: "relative" }}>
+                <button 
+                  onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}
+                  className="button"
+                  style={{ background: "white", color: "#374151", border: "1px solid #D1D5DB", display: "flex", alignItems: "center", gap: "8px", padding: "6px 16px" }}
+                >
+                  📅 {dateFilterType === "ALL" ? "Semua Waktu" : dateFilterType === "TODAY" ? "Hari Ini" : dateFilterType === "MONTH" ? "Bulan Ini" : "Kustom"}
+                </button>
+
+                {isDateMenuOpen && (
+                  <div style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", background: "white", border: "1px solid #E5E7EB", borderRadius: "12px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 50, width: "220px", padding: "12px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      <button onClick={() => handleDateFilterChange("ALL")} style={{ textAlign: "left", padding: "8px 12px", background: dateFilterType === "ALL" ? "#F3F4F6" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Semua Waktu</button>
+                      <button onClick={() => handleDateFilterChange("TODAY")} style={{ textAlign: "left", padding: "8px 12px", background: dateFilterType === "TODAY" ? "#F3F4F6" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Hari Ini</button>
+                      <button onClick={() => handleDateFilterChange("MONTH")} style={{ textAlign: "left", padding: "8px 12px", background: dateFilterType === "MONTH" ? "#F3F4F6" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Bulan Ini</button>
+                      <button onClick={() => setDateFilterType("CUSTOM")} style={{ textAlign: "left", padding: "8px 12px", background: dateFilterType === "CUSTOM" ? "#F3F4F6" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Pilih Manual...</button>
+                    </div>
+
+                    {dateFilterType === "CUSTOM" && (
+                      <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #E5E7EB", display: "flex", flexDirection: "column", gap: "8px" }}>
+                        <div>
+                          <label style={{ fontSize: "12px", color: "#6B7280", display: "block", marginBottom: "4px" }}>Dari:</label>
+                          <input type="date" className="input" style={{ width: "100%", padding: "6px 8px" }} value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: "12px", color: "#6B7280", display: "block", marginBottom: "4px" }}>Sampai:</label>
+                          <input type="date" className="input" style={{ width: "100%", padding: "6px 8px" }} value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} />
+                        </div>
+                        <button className="button" style={{ width: "100%", padding: "8px", fontSize: "13px", marginTop: "4px" }} onClick={applyCustomDate}>
+                          Terapkan
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {loading ? (
             <p>Loading history...</p>
-          ) : history.length === 0 ? (
-            <p style={{ color: "#6B7280" }}>Belum ada transaksi tersimpan.</p>
+          ) : filteredHistory.length === 0 ? (
+            <p style={{ color: "#6B7280", textAlign: "center", padding: "20px 0" }}>Belum ada transaksi tersimpan untuk rentang/kategori ini.</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -392,18 +476,23 @@ export default function Transaction() {
                   </tr>
                 </thead>
                 <tbody>
-                  {history.map((tx) => (
-                    <tr key={tx.transaction_id}>
-                      <td style={{ padding: "10px" }}>{tx.transaction_datetime ? new Date(tx.transaction_datetime).toLocaleString() : "-"}</td>
-                      <td style={{ padding: "10px" }}>Rp{tx.total_amount}</td>
-                      <td style={{ padding: "10px" }}>{getTransactionTypeLabel(tx)}</td>
-                      <td style={{ padding: "10px" }}>
-                        <button className="button" onClick={() => openTransactionModal(tx)}>
-                          Detail
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredHistory.map((tx) => {
+                    const txType = getTransactionTypeLabel(tx);
+                    return (
+                      <tr key={tx.transaction_id}>
+                        <td style={{ padding: "10px" }}>{tx.transaction_datetime ? new Date(tx.transaction_datetime).toLocaleString() : "-"}</td>
+                        <td style={{ padding: "10px", fontWeight: "500" }}>Rp{tx.total_amount}</td>
+                        <td style={{ padding: "10px" }}>
+                          <span className={`badge ${txType === "SELL" ? "safe" : txType === "BUY" ? "low" : ""}`} style={txType === "MIXED" ? { background: "#E5E7EB", color: "#374151" } : { padding: "4px 10px", fontSize: "12px" }}>
+                            {txType}
+                          </span>
+                        </td>
+                        <td style={{ padding: "10px" }}>
+                          <button className="button" style={{ padding: "6px 12px", fontSize: "13px" }} onClick={() => openTransactionModal(tx)}>Detail</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -418,9 +507,7 @@ export default function Transaction() {
                   <h3>Detail Transaksi</h3>
                   <p style={{ margin: 0, color: "#6B7280" }}>{selectedTransaction.transaction_datetime ? new Date(selectedTransaction.transaction_datetime).toLocaleString() : "-"}</p>
                 </div>
-                <button className="button" onClick={closeTransactionModal} style={{ background: "#EF4444", color: "white" }}>
-                  Tutup
-                </button>
+                <button className="button" onClick={closeTransactionModal} style={{ background: "#EF4444", color: "white" }}>Tutup</button>
               </div>
 
               <div style={{ marginBottom: "16px" }}>

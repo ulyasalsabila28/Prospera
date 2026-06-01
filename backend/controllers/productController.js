@@ -48,6 +48,19 @@ const createProduct = async (req, res) => {
             return res.status(400).json({ message: "Nama, Harga Modal, dan Harga Jual wajib diisi!" });
         }
 
+        // --- TAMBAHAN BARU: CEK DUPLIKASI NAMA PRODUK ---
+        const existingProduct = await Product.findOne({
+            where: {
+                user_id_fk: userId,
+                product_name: product_name
+            }
+        });
+
+        if (existingProduct) {
+            return res.status(400).json({ message: `Produk dengan nama "${product_name}" sudah ada di toko Anda.` });
+        }
+        // ------------------------------------------------
+
         const newProduct = await Product.create({
             user_id_fk: userId,
             product_name: product_name,
@@ -77,6 +90,20 @@ const updateProduct = async (req, res) => {
         if (!product_name || product_cost === undefined || product_price === undefined) {
             return res.status(400).json({ message: "Nama, Harga Modal, dan Harga Jual tidak boleh kosong!" });
         }
+
+        // --- TAMBAHAN BARU: CEK DUPLIKASI SAAT EDIT ---
+        const duplicateProduct = await Product.findOne({
+            where: {
+                user_id_fk: userId,
+                product_name: product_name
+            }
+        });
+
+        // Pastikan nama baru tidak bentrok dengan barang lain milik user ini
+        if (duplicateProduct && String(duplicateProduct.product_id) !== String(productId)) {
+            return res.status(400).json({ message: `Nama "${product_name}" sudah digunakan oleh produk lain di toko Anda.` });
+        }
+        // ----------------------------------------------
 
         const [updatedRows] = await Product.update(
             {

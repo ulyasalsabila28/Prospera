@@ -1,4 +1,5 @@
 const { sequelize, Transaction, TransactionDetail, Product } = require('../models');
+const { Op } = require('sequelize'); // <-- TAMBAHAN BARU: Import Operator Sequelize untuk filter tanggal
 
 // 1. Fungsi untuk melakukan proses pembayaran (Dilengkapi Sistem Rollback)
 const createTransaction = async (req, res) => {
@@ -132,9 +133,21 @@ const getTransactionHistory = async (req, res) => {
     try {
         const userId = req.user.id;
         
+        // --- TAMBAHAN BARU: Menangkap Parameter Tanggal & Menyusun Filter ---
+        const { start, end } = req.query;
+        let whereCondition = { user_id_fk: userId };
+
+        // Jika frontend mengirim parameter start dan end, tambahkan filter BETWEEN
+        if (start && end) {
+            whereCondition.transaction_datetime = {
+                [Op.between]: [`${start} 00:00:00`, `${end} 23:59:59`]
+            };
+        }
+        // --------------------------------------------------------------------
+        
         // Mengambil seluruh data riwayat dan mengurutkannya dari yang paling baru (DESC)
         const transactions = await Transaction.findAll({
-            where: { user_id_fk: userId },
+            where: whereCondition, // <-- Menggunakan kondisi where yang sudah difilter
             order: [['transaction_datetime', 'DESC']],
             include: [
                 {

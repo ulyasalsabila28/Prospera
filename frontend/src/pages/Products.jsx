@@ -106,6 +106,22 @@ export default function Products() {
       <div className="card">
         <h2>📦 Product Management</h2>
 
+        {/* --- KOTAK PESAN (ALERT) --- */}
+        {message && (
+          <div style={{ 
+            padding: "12px 16px", 
+            borderRadius: "8px", 
+            backgroundColor: message.includes("berhasil") ? "#dcfce7" : "#fee2e2", 
+            color: message.includes("berhasil") ? "#16a34a" : "#dc2626",
+            border: `1px solid ${message.includes("berhasil") ? "#4ade80" : "#f87171"}`,
+            marginBottom: "20px",
+            fontWeight: "500"
+          }}>
+            {message}
+          </div>
+        )}
+        {/* --------------------------- */}
+
         <div className="card">
           <h3>{selectedProduct ? "Edit Product" : "Add Product"}</h3>
           <div className="form-row" style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
