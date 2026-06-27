@@ -65,4 +65,4 @@ const buildWIBDateRange = (startDate, endDate) => {
     return range;
 };
 
-module.exports = { getDateFilter, isValidDate, buildWIBDateRange };
+module.exports = { getDateFilter, buildWIBDateRange };

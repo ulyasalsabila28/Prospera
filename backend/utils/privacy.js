@@ -31,22 +31,6 @@ const maskEmail = (email) => {
     return `${visibleStart}${'*'.repeat(maskLength)}${visibleEnd}@${domain}`;
 };
 
-/**
- * Topeng nomor telepon — sembunyikan 4 digit tengah
- * Contoh: "081234567890" → "0812****7890"
- * Contoh: "+6281234567890" → "+6281****7890"
- *
- * @param {string} phone - Nomor telepon asli
- * @returns {string} Nomor yang sudah di-mask
- */
-const maskPhone = (phone) => {
-    if (!phone || typeof phone !== 'string') return '';
-    const cleaned = phone.replace(/\s/g, '');
-    if (cleaned.length < 8) return '****'; // terlalu pendek untuk di-mask dengan aman
-    const visibleStart = cleaned.slice(0, 4);
-    const visibleEnd   = cleaned.slice(-4);
-    const maskLength   = Math.max(cleaned.length - 8, 4);
-    return `${visibleStart}${'*'.repeat(maskLength)}${visibleEnd}`;
-};
 
-module.exports = { maskEmail, maskPhone };
+
+module.exports = { maskEmail };
