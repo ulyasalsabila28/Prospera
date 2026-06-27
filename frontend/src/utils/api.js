@@ -9,9 +9,9 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:50
 // ==================== MANAJEMEN SESI ====================
 
 /**
- * Mengambil token JWT dari sessionStorage (Anti-Zombie Session)
+ * Mengambil token (DEPRECATED - Cookie Based Auth)
  */
-export const getToken = () => sessionStorage.getItem("token");
+export const getToken = () => null;
 
 /**
  * Mengambil data user dari sessionStorage
@@ -45,10 +45,9 @@ export const getUserRole = () => {
 };
 
 /**
- * Menyimpan sesi autentikasi (token + data user) ke sessionStorage
+ * Menyimpan sesi autentikasi (data user saja, JWT ada di HttpOnly Cookie)
  */
 export const setAuthSession = (token, user) => {
-    sessionStorage.setItem("token", token);
     sessionStorage.setItem("user", JSON.stringify(user));
 };
 
@@ -56,57 +55,17 @@ export const setAuthSession = (token, user) => {
  * Menghapus seluruh sesi autentikasi dari sessionStorage
  */
 export const clearAuthSession = () => {
-    sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
 };
 
 /**
- * Memeriksa apakah token JWT masih valid (belum expired).
- * 
- * PENTING (F-T08): Ini adalah CLIENT-SIDE FAST-FAIL CHECK saja.
- * Fungsi ini BUKAN pengganti validasi keamanan di server.
- * - Tujuan: Mencegah API call yang pasti gagal (token expired/corrupt).
- * - Keamanan sebenarnya: Backend middleware (verifyToken + authorizeRole).
- * - Role/otorisasi: TIDAK pernah diandalkan dari decode JWT di client.
- *   Role dibaca dari localStorage (yang di-set saat login dari respons server).
- * 
- * @returns {boolean} true jika token ada, formatnya valid, dan belum expired
+ * Memeriksa apakah sesi pengguna valid berdasarkan eksistensi data user.
+ * Keamanan sebenarnya berada di level HttpOnly Cookie & Backend Interceptor.
+ * @returns {boolean} true jika user ada di session
  */
 export const isTokenValid = () => {
-    const token = getToken();
-    if (!token) return false;
-
-    try {
-        // SECURITY FIX (F-T07): Validasi struktur JWT (harus punya 3 bagian)
-        const parts = token.split('.');
-        if (parts.length !== 3) {
-            console.error('[Security] Token JWT memiliki format yang tidak valid.');
-            return false;
-        }
-
-        // FIX (HIGH-FE-02): JWT menggunakan Base64URL (RFC 4648 §5), bukan Base64 standar.
-        // Karakter '+' → '-' dan '/' → '_' dalam Base64URL, tanpa padding '='.
-        // atob() native hanya memahami Base64 standar → konversi dulu sebelum decode.
-        const base64Url = parts[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
-        const payload = JSON.parse(atob(padded));
-
-        // Cek expiry
-        const isExpired = payload.exp * 1000 < Date.now();
-        if (isExpired) return false;
-
-        // Validasi: payload harus memiliki field yang diharapkan
-        if (!payload.id || !payload.role) {
-            console.error('[Security] Token tidak memiliki payload yang diharapkan.');
-            return false;
-        }
-
-        return true;
-    } catch {
-        // Token corrupt / format salah → anggap tidak valid
-        return false;
-    }
+    const user = getCurrentUser();
+    return user !== null;
 };
 
 // ==================== FETCH WRAPPER TERPUSAT ====================
@@ -136,21 +95,17 @@ export class ApiError extends Error {
  * @returns {Promise<any>}  - Data JSON dari response
  */
 export const apiFetch = async (endpoint, options = {}) => {
-    const token = getToken();
     const headers = {
         "Content-Type": "application/json",
         ...(options.headers || {})
     };
-
-    if (token) {
-        headers.Authorization = `Bearer ${token}`;
-    }
 
     let response;
     try {
         response = await fetch(`${API_BASE_URL}${endpoint}`, {
             ...options,
             headers,
+            credentials: 'include' // FIX (V4.0): Kirim HttpOnly Cookie
         });
     } catch (error) {
         // Log technical error for developers
@@ -158,9 +113,10 @@ export const apiFetch = async (endpoint, options = {}) => {
         throw new ApiError("Koneksi ke server terputus. Pastikan server aktif dan perangkat Anda terhubung ke internet.");
     }
 
-    // --- HANDLER: Token expired ---
+    // --- HANDLER: Token expired / Unauthorized ---
     if (response.status === 401) {
-        if (!endpoint.includes("/auth/login") && window.location.pathname !== "/login") {
+        const currentPath = window.location.pathname;
+        if (!endpoint.includes("/auth/login") && currentPath !== "/login" && currentPath !== "/register") {
             clearAuthSession();
             window.location.href = "/login";
             throw new ApiError("Sesi Anda telah berakhir. Silakan login kembali untuk melanjutkan.");
@@ -224,6 +180,7 @@ export const apiFetchBlob = async (endpoint) => {
         response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method: 'GET',
             headers,
+            credentials: 'include' // CRITICAL BUG FIX: missing credentials caused 401 redirect
         });
     } catch (error) {
         console.error(`[API Network Error] at ${endpoint}:`, error);

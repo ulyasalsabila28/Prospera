@@ -15,7 +15,7 @@ export default function TransactionForm({
   searchTerm, setSearchTerm, isDropdownOpen, setIsDropdownOpen,
   filteredProducts, selectedProductId, setSelectedProductId,
   transactionType, setTransactionType, quantity, setQuantity,
-  modal, setModal, hargaJual, setHargaJual, datetime, setDatetime,
+  modal, hargaJual, datetime, setDatetime,
   addItem
 }) {
   // FIX (MEDIUM-FE-01): State untuk index item yang di-highlight via keyboard

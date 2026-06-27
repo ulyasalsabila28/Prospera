@@ -1,6 +1,7 @@
-const { User } = require('../models');
+const { User, BlacklistedToken } = require('../models');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { JWT_EXPIRY } = require('../config/appConfig');
 // FIX (HIGH-01): Import utilitas masking data pribadi (UU PDP — Data Minimization)
 const { maskEmail } = require('../utils/privacy');
@@ -13,12 +14,20 @@ const { hardPurgeStore } = require('../services/purgeService');
  */
 const register = async (req, res, next) => {
     try {
-        const { username, email, password } = req.body;
+        const { username, email, password, phone_number } = req.body;
 
         // Cek duplikasi email
         const existingUser = await User.findOne({ where: { email } });
         if (existingUser) {
             return res.status(409).json({ message: "Email tersebut sudah terdaftar." });
+        }
+
+        // Cek duplikasi no hp
+        if (phone_number) {
+            const existingPhone = await User.findOne({ where: { phone_number } });
+            if (existingPhone) {
+                return res.status(409).json({ message: "Nomor handphone tersebut sudah terdaftar." });
+            }
         }
 
         // Hash password
@@ -30,6 +39,7 @@ const register = async (req, res, next) => {
             username,
             email,
             password: hashedPassword,
+            phone_number: phone_number || null,
             role: 'owner'  // Pendaftar pertama SELALU jadi Owner
         });
 
@@ -44,41 +54,104 @@ const register = async (req, res, next) => {
 
 /**
  * Login — Autentikasi pengguna dan pemberian token JWT
- * Token payload kini menyertakan 'role' untuk otorisasi di frontend & backend.
+ * Rute ini di-intercept oleh passport.authenticate('local') di authRoutes.js
+ * sehingga kredensial telah divalidasi dan `req.user` sudah terisi.
  */
 const login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        const user = req.user;
 
-        const user = await User.findOne({ where: { email } });
-
-        // KEAMANAN: Pesan generik untuk mencegah User Enumeration Attack
         if (!user) {
-            return res.status(401).json({ message: "Email atau kata sandi yang Anda masukkan salah." });
+            return res.status(401).json({ message: "Autentikasi gagal." });
         }
 
-        const isPasswordMatch = await bcrypt.compare(password, user.password);
-        if (!isPasswordMatch) {
-            return res.status(401).json({ message: "Email atau kata sandi yang Anda masukkan salah." });
-        }
+        // Generate JTI (UUID) untuk Ghost Token Prevention
+        const jti = crypto.randomUUID();
 
-        // JWT payload kini menyertakan ROLE dan OWNER_ID untuk multi-tenant
+        // JWT payload kini menyertakan JTI, ROLE dan OWNER_ID untuk multi-tenant
         const token = jwt.sign(
-            { id: user.user_id, email: user.email, role: user.role, owner_id: user.owner_id },
+            { jti: jti, id: user.user_id, email: user.email, role: user.role, owner_id: user.owner_id },
             process.env.JWT_SECRET,
             { expiresIn: JWT_EXPIRY }
         );
 
+        // Injeksi JWT ke dalam HttpOnly Cookie (Anti-XSS & Anti-CSRF)
+        res.cookie('jwt', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax', // Cross-port CSRF protection
+            maxAge: 24 * 60 * 60 * 1000 // 1 Hari
+        });
+
         res.status(200).json({
             message: "Login berhasil.",
-            token: token,
             user: {
                 id: user.user_id,
                 username: user.username,
-                // FIX (HIGH-01): Email di-mask sebelum dikirim ke browser (UU PDP - Data Minimization)
-                // Raw email tetap di DB dan dipakai untuk login lookup — tidak pernah keluar via API
+                // FIX (HIGH-01): Email di-mask sebelum dikirim ke browser (UU PDP)
                 email: maskEmail(user.email),
-                role: user.role  // Frontend butuh ini untuk render sidebar
+                role: user.role,
+                has_completed_tour: user.has_completed_tour
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Logout — Menarik JWT dan memasukkan JTI ke Blacklist
+ */
+const logout = async (req, res, next) => {
+    try {
+        const token = req.cookies && req.cookies['jwt'];
+        if (token) {
+            try {
+                // Decode token tanpa verifikasi signature untuk mendapatkan JTI dan EXP
+                const decoded = jwt.decode(token);
+                if (decoded && decoded.jti && decoded.exp) {
+                    await BlacklistedToken.create({
+                        jti: decoded.jti,
+                        expires_at: new Date(decoded.exp * 1000)
+                    });
+                }
+            } catch (err) {
+                console.error("Gagal blacklist token saat logout:", err.message);
+            }
+        }
+
+        // Hapus jendela waktu lembur agar tidak diwariskan ke sesi berikutnya
+        if (req.user && (req.user.id || req.user.user_id)) {
+            const userId = req.user.id || req.user.user_id;
+            await User.update(
+                { overtime_unlocked_until: null },
+                { where: { user_id: userId } }
+            );
+        }
+
+        // Hancurkan cookie di browser klien
+        res.clearCookie('jwt');
+        res.status(200).json({ message: "Berhasil keluar (Sesi dihapus mutlak)." });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Me — Session Hydration (Anti F5 Amnesia)
+ * Endpoint ini dilindungi oleh passport.authenticate('jwt').
+ * Jika sukses, mengembalikan profil user yang sedang aktif.
+ */
+const me = async (req, res, next) => {
+    try {
+        const user = req.user;
+        res.status(200).json({
+            user: {
+                id: user.user_id,
+                username: user.username,
+                email: maskEmail(user.email),
+                role: user.role,
+                has_completed_tour: user.has_completed_tour
             }
         });
     } catch (error) {
@@ -113,7 +186,8 @@ const createUser = async (req, res, next) => {
             email,
             password: hashedPassword,
             role: assignedRole,
-            owner_id: req.user.id // SaaS ISOLATION: Karyawan ini milik Owner yang sedang login
+            // FIX: Gunakan req.user.user_id yang terdekripsi dari JWT
+            owner_id: req.user.user_id // SaaS ISOLATION: Karyawan ini milik Owner yang sedang login
         });
 
         res.status(201).json({ 
@@ -137,9 +211,10 @@ const createUser = async (req, res, next) => {
 const getAllUsers = async (req, res, next) => {
     try {
         // SaaS ISOLATION: Hanya tampilkan karyawan milik Owner ini
+        // FIX: Gunakan req.user.user_id untuk query owner_id
         const users = await User.findAll({
-            where: { owner_id: req.user.id },
-            attributes: ['user_id', 'username', 'email', 'role'],
+            where: { owner_id: req.user.user_id },
+            attributes: ['user_id', 'username', 'email', 'role', 'is_active'],
             order: [['user_id', 'ASC']]
         });
 
@@ -157,7 +232,7 @@ const getAllUsers = async (req, res, next) => {
 const deleteUserById = async (req, res, next) => {
     try {
         const targetId = Number(req.params.id);
-        const currentUserId = req.user.id;
+        const currentUserId = req.user.user_id;
 
         // Cegah Owner menghapus diri sendiri
         if (targetId === currentUserId) {
@@ -169,7 +244,7 @@ const deleteUserById = async (req, res, next) => {
         const targetUser = await User.findOne({
             where: {
                 user_id: targetId,
-                owner_id: req.user.id  // Isolasi tenant: hanya karyawan milik Owner ini
+                owner_id: req.user.user_id  // Isolasi tenant: hanya karyawan milik Owner ini
             }
         });
 
@@ -182,9 +257,93 @@ const deleteUserById = async (req, res, next) => {
             return res.status(403).json({ message: "Tidak dapat menghapus akun Owner." });
         }
 
-        await targetUser.destroy();
+        // SOFT DELETE: Set is_active = false untuk menjaga riwayat transaksi
+        await targetUser.update({ is_active: false });
 
-        res.status(200).json({ message: `Akun "${targetUser.username}" berhasil dihapus.` });
+        res.status(200).json({ message: `Akun "${targetUser.username}" berhasil dinonaktifkan.` });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * updateUserById — Owner mengedit data Karyawan (Username & Email saja)
+ */
+const updateUserById = async (req, res, next) => {
+    try {
+        const targetId = Number(req.params.id);
+        const { username, email } = req.body;
+
+        const targetUser = await User.findOne({
+            where: {
+                user_id: targetId,
+                owner_id: req.user.user_id
+            }
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({ message: "Pengguna tidak ditemukan." });
+        }
+
+        if (targetUser.role === 'owner') {
+            return res.status(403).json({ message: "Tidak dapat mengedit akun Owner melalui rute ini." });
+        }
+
+        if (email && email !== targetUser.email) {
+            const existingEmail = await User.findOne({ where: { email } });
+            if (existingEmail) {
+                return res.status(409).json({ message: "Email tersebut sudah digunakan." });
+            }
+        }
+
+        await targetUser.update({
+            username: username || targetUser.username,
+            email: email || targetUser.email
+        });
+
+        res.status(200).json({ message: `Akun "${targetUser.username}" berhasil diperbarui.` });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * resetUserPasswordById — Owner mereset password Karyawan
+ */
+const resetUserPasswordById = async (req, res, next) => {
+    try {
+        const targetId = Number(req.params.id);
+        const { password } = req.body;
+
+        if (!password || password.length < 6) {
+            return res.status(400).json({ message: "Password minimal 6 karakter." });
+        }
+
+        const targetUser = await User.findOne({
+            where: {
+                user_id: targetId,
+                owner_id: req.user.user_id
+            }
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({ message: "Pengguna tidak ditemukan." });
+        }
+
+        if (targetUser.role === 'owner') {
+            return res.status(403).json({ message: "Tidak dapat mereset password Owner." });
+        }
+
+        if (!targetUser.is_active) {
+            return res.status(403).json({ message: "Tidak dapat mereset password akun nonaktif." });
+        }
+
+        const salt = await bcrypt.genSalt(12);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        await targetUser.update({ password: hashedPassword });
+
+        res.status(200).json({ message: `Password untuk "${targetUser.username}" berhasil direset.` });
     } catch (error) {
         next(error);
     }
@@ -199,7 +358,7 @@ const deleteUserById = async (req, res, next) => {
  */
 const deleteUser = async (req, res, next) => {
     try {
-        const idTarget = req.user.id;
+        const idTarget = req.user.user_id;
         const user = await User.findByPk(idTarget);
 
         if (!user) {
@@ -235,7 +394,7 @@ const deleteUser = async (req, res, next) => {
 const changePassword = async (req, res, next) => {
     try {
         const { old_password, new_password } = req.body;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const user = await User.findByPk(userId);
         if (!user) {
@@ -262,18 +421,11 @@ const changePassword = async (req, res, next) => {
     }
 };
 
-/**
- * logout — API Logout untuk membersihkan sesi di server (terutama overtime_unlocked_until)
- */
-const logout = async (req, res, next) => {
+const markTourComplete = async (req, res, next) => {
     try {
-        // Clear on Logout: Hapus jendela waktu lembur agar tidak diwariskan ke sesi berikutnya
-        await User.update(
-            { overtime_unlocked_until: null },
-            { where: { user_id: req.user.id } }
-        );
-
-        res.status(200).json({ message: "Logout berhasil. Sesi telah dibersihkan." });
+        const userId = req.user.user_id; // Fix: Gunakan user_id dari model Sequelize
+        await User.update({ has_completed_tour: true }, { where: { user_id: userId } });
+        res.status(200).json({ message: "Tour completed state updated successfully." });
     } catch (error) {
         next(error);
     }
@@ -282,10 +434,14 @@ const logout = async (req, res, next) => {
 module.exports = {
     register,
     login,
+    logout,
+    me,
     createUser,
     getAllUsers,
-    deleteUserById,
     deleteUser,
+    deleteUserById,
+    updateUserById,
+    resetUserPasswordById,
     changePassword,
-    logout
+    markTourComplete
 };

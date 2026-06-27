@@ -1,53 +1,38 @@
-const jwt = require('jsonwebtoken');
+const passport = require('passport');
 
 /**
  * Middleware Verifikasi Token JWT
- * Memvalidasi keaslian token dan menyimpan data pengguna ke req.user
+ * Memvalidasi keaslian token (via HttpOnly Cookie) menggunakan Passport-JWT,
+ * memeriksa BlacklistedTokens, dan menyimpan data pengguna ke req.user
  */
 const verifyToken = (req, res, next) => {
-    // Fail-fast: pastikan JWT_SECRET sudah dikonfigurasi
-    if (!process.env.JWT_SECRET) {
-        console.error('FATAL: JWT_SECRET belum dikonfigurasi di file .env!');
-        return res.status(500).json({ message: "Konfigurasi server tidak lengkap." });
-    }
-
-    // 1. Tangkap header "Authorization" dari request
-    const authHeader = req.headers['authorization'];
-    
-    // 2. Pisahkan kata "Bearer" dari tokennya
-    const token = authHeader && authHeader.split(' ')[1]; 
-
-    // 3. Jika tidak ada token sama sekali, tolak!
-    if (!token) {
-        return res.status(401).json({ message: "Akses ditolak! Anda belum login (Token tidak ada)." });
-    }
-
-    // 4. Verifikasi keaslian token menggunakan JWT_SECRET
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    // Gunakan custom callback Passport agar kita bisa menangani error secara manual
+    // dan menyuntikkan store_id ke objek req.user
+    passport.authenticate('jwt', { session: false }, (err, user, info) => {
         if (err) {
-            // Membedakan jenis error supaya lebih mudah ditangani
-            if (err.name === 'TokenExpiredError') {
-                return res.status(401).json({ message: "Sesi Anda telah habis. Silakan login kembali." });
-            } else if (err.name === 'JsonWebTokenError') {
-                return res.status(403).json({ message: "Token tidak valid atau telah dimanipulasi!" });
-            } else {
-                return res.status(403).json({ message: "Gagal memverifikasi token." });
-            }
+            return next(err);
         }
         
-        // 5. Jika valid, simpan data user (termasuk user_id) ke dalam req.user
-        req.user = decoded;
-
+        // Jika tidak ada user (misal token kadaluwarsa, tidak ada cookie, atau masuk blacklist)
+        if (!user) {
+            const message = info && info.message ? info.message : "Sesi Anda telah habis atau tidak valid. Silakan login kembali.";
+            return res.status(401).json({ message });
+        }
+        
         // FIX (CRITICAL-05): Normalisasi role ke lowercase untuk memastikan
         // authorizeRole('owner') selalu cocok terlepas dari casing di JWT payload.
-        const userId = decoded.id || decoded.user_id || decoded.userId;
-        const userRole = decoded.role ? decoded.role.toLowerCase() : 'owner';
-        req.user.role = userRole; // Explicitly override — bukan hanya lokal var
-        req.user.store_id = userRole === 'owner' ? userId : (decoded.owner_id || userId);
+        // User yang didapat dari passport adalah instance Sequelize
+        const userId = user.user_id;
+        const userRole = user.role ? user.role.toLowerCase() : 'owner';
         
-        // 6. Izinkan masuk ke rute tujuan (Controller)
-        next(); 
-    });
+        // Karena object Sequelize, kita bisa menambah properti custom (sebaiknya gunakan dataValues atau assign langsung)
+        user.role = userRole;
+        user.store_id = userRole === 'owner' ? userId : (user.owner_id || userId);
+        
+        // Simpan ke request
+        req.user = user;
+        next();
+    })(req, res, next);
 };
 
 module.exports = verifyToken;

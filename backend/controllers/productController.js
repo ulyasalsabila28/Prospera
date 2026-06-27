@@ -45,7 +45,11 @@ const getAllProducts = async (req, res, next) => {
         // Query tetap mengambil semua field (aiRestockService butuh data lengkap).
         const productsWithStatus = rows.map(p => {
             const { user_id_fk, deletedAt, updatedAt, ...productData } = p.toJSON(); // eslint-disable-line no-unused-vars
-            productData.stock_status = getStockStatus(productData.product_stock); 
+            productData.stock_status = getStockStatus(
+                productData.product_stock,
+                productData.min_display_qty,
+                productData.calculated_reorder_point
+            ); 
             
             const aiData = restockSuggestions[productData.product_id] || { suggested_restock: 0, velocity: 0 };
             productData.suggested_restock = aiData.suggested_restock;
@@ -125,9 +129,6 @@ const createProduct = async (req, res, next) => {
         }
 
         let finalExpiredDate = expired_date || null;
-        if (Number(product_stock) > 0 && !finalExpiredDate) {
-            return res.status(400).json({ message: "Produk dengan stok awal lebih dari 0 wajib memiliki Tanggal Kedaluwarsa." });
-        }
         if (Number(product_stock) === 0) {
             finalExpiredDate = null;
         }
@@ -183,11 +184,6 @@ const updateProduct = async (req, res, next) => {
         }
 
         let finalExpiredDate = expired_date || null;
-
-        // Celah Restock: Dari 0 ke > 0 wajib ada expired_date
-        if (currentProduct.product_stock === 0 && Number(product_stock) > 0 && !finalExpiredDate) {
-            return res.status(400).json({ message: "Barang yang di-restock dari 0 wajib memiliki Tanggal Kedaluwarsa baru." });
-        }
 
         // Auto-Nullification jika stok jadi 0
         if (Number(product_stock) === 0) {

@@ -77,7 +77,7 @@ function SmartPredict() {
 
                 {/* Right Column */}
                 <div className="col-lg-8 col-md-7 d-flex flex-column">
-                    <div className="simple-card shadow-sm border-start border-danger border-4 mb-4 flex-grow-1 d-flex flex-column">
+                    <div className="simple-card shadow-sm border border-danger border-opacity-50 mb-4 flex-grow-1 d-flex flex-column">
                         <div className="d-flex align-items-center mb-3">
                             <div className="bg-danger bg-opacity-10 text-danger p-2 rounded-circle me-3">
                                 <i className="fas fa-exclamation-triangle" />

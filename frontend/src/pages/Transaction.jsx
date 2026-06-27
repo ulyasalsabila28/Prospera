@@ -21,31 +21,7 @@ export default function Transaction() {
           <div style={{ marginBottom: "16px" }}><ErrorMessage error={logic.fetchError} /></div>
         )}
 
-        {/* NOTIFIKASI & TOMBOL CETAK STRUK */}
-        {logic.message && (
-          <div style={{ 
-            padding: "12px 16px", borderRadius: "10px", 
-            background: logic.messageType === "success" ? "#D1FAE5" : "#FEF3C7", 
-            border: `1px solid ${logic.messageType === "success" ? "#10B981" : "#F59E0B"}`, 
-            color: logic.messageType === "success" ? "#065F46" : "#92400E", 
-            marginBottom: "16px", display: "flex", alignItems: "center",
-            justifyContent: "space-between", gap: "12px", fontWeight: "500"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <i className={`fas ${logic.messageType === "success" ? "fa-check-circle text-success" : "fa-exclamation-circle text-warning"} fs-5`}></i>
-                <span>{logic.message}</span>
-            </div>
-            {/* Panggil fungsi printReceipt di sini */}
-            {logic.messageType === "success" && logic.lastTransaction && (
-                <button 
-                    onClick={() => printReceipt(logic.lastTransaction)} 
-                    style={{ padding: "6px 12px", background: "white", border: "1px solid #10B981", borderRadius: "6px", color: "#10B981", cursor: "pointer", fontWeight: "bold" }}
-                >
-                    <i className="fas fa-print me-2"></i>Cetak Struk
-                </button>
-            )}
-          </div>
-        )}
+
 
         {/* KOMPONEN UI */}
         <TransactionForm {...logic} />

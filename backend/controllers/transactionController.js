@@ -294,7 +294,7 @@ const getTransactionHistory = async (req, res, next) => {
 const exportTransactionHistory = async (req, res, next) => {
     try {
         const userId = req.user.store_id;
-        let { start, end } = req.query;
+        const { start, end, format } = req.query;
 
         // FIX (MED-04): Default ke 30 hari terakhir jika tidak ada parameter tanggal
         if (!start || !end) {
@@ -315,9 +315,10 @@ const exportTransactionHistory = async (req, res, next) => {
             return res.status(400).json({ message: 'Tanggal akhir tidak boleh lebih awal dari tanggal mulai.' });
         }
         const diffDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-        if (diffDays > 366) {
+        // FIX (SECURITY): Ubah maksimum menjadi 31 hari untuk mengurangi beban server
+        if (diffDays > 31) {
             return res.status(400).json({
-                message: `Rentang tanggal terlalu besar (${diffDays} hari). Maksimum export adalah 366 hari. Silakan pecah menjadi beberapa periode.`
+                message: `Rentang tanggal terlalu besar (${diffDays} hari). Maksimum export adalah 31 hari. Silakan pecah menjadi beberapa periode.`
             });
         }
 
@@ -339,33 +340,9 @@ const exportTransactionHistory = async (req, res, next) => {
             });
         }
 
-        const transactions = await Transaction.findAll({
-            where: whereCondition,
-            order: [['transaction_datetime', 'ASC']],
-            include: [
-                {
-                    model: TransactionDetail,
-                    include: [
-                        {
-                            model: Product,
-                            attributes: ['product_name'],
-                            paranoid: false,
-                            include: [Category]
-                        }
-                    ]
-                },
-                {
-                    model: User,
-                    as: 'Cashier',
-                    attributes: ['user_id', 'username']
-                }
-            ]
-        });
+        const isOwner = req.user.role === 'owner';
 
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Laporan Transaksi');
-
-        worksheet.columns = [
+        const columns = [
             { header: 'ID Transaksi', key: 'transaction_id', width: 15 },
             { header: 'Tanggal & Waktu', key: 'datetime', width: 25 },
             { header: 'Tipe Transaksi', key: 'type', width: 15 },
@@ -374,69 +351,196 @@ const exportTransactionHistory = async (req, res, next) => {
             { header: 'Metode Pembayaran', key: 'payment_method', width: 20 },
             { header: 'Nama Produk', key: 'product_name', width: 30 },
             { header: 'Kategori', key: 'category', width: 20 },
-            { header: 'Harga Modal', key: 'capital_cost', width: 15 },
             { header: 'Harga Jual', key: 'selling_price', width: 15 },
             { header: 'Qty Terjual', key: 'quantity', width: 12 },
-            { header: 'Subtotal Harga', key: 'sub_total', width: 18 },
-            { header: 'Total Laba Nominal', key: 'total_laba', width: 20 },
-            { header: 'Margin Keuntungan', key: 'margin', width: 18 }
+            { header: 'Subtotal Harga', key: 'sub_total', width: 18 }
         ];
 
-        // Styling Header
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        // Jika Owner, tambahkan kolom sensitif
+        if (isOwner) {
+            columns.splice(8, 0, { header: 'Harga Modal', key: 'capital_cost', width: 15 });
+            columns.push(
+                { header: 'Total Laba Nominal', key: 'total_laba', width: 20 },
+                { header: 'Margin Keuntungan', key: 'margin', width: 18 }
+            );
+        }
 
-        transactions.forEach((tx) => {
-            const dateStr = tx.transaction_datetime ? new Date(tx.transaction_datetime).toLocaleString('id-ID') : '-';
-            const typeStr = tx.transaction_type === 'sell' ? 'Penjualan' : 'Restock';
-            const statusStr = tx.status === 'success' ? 'Sukses' : (tx.status === 'cancelled' ? 'Dibatalkan' : tx.status);
-            const cashierName = tx.Cashier ? tx.Cashier.username : 'Sistem';
-            const paymentMethod = 'Tunai';
+        const sanitizeFilename = (s) => (s || 'All').replace(/[^a-zA-Z0-9\-_]/g, '');
+        const filenamePrefix = `Laporan_Transaksi_${sanitizeFilename(start)}_to_${sanitizeFilename(end)}`;
+        
+        let workbook;
+        let worksheet;
 
-            tx.TransactionDetails.forEach((detail) => {
-                const productName = detail.Product ? detail.Product.product_name : 'Produk Dihapus';
-                const categoryName = (detail.Product && detail.Product.Category) ? detail.Product.Category.category_name : '-';
+        // Escape helper untuk CSV streaming (Dinaikkan agar bisa dipakai header)
+        const escapeCSV = (field) => {
+            if (field === null || field === undefined) return '';
+            const str = String(field);
+            if (str.includes(';') || str.includes('\n') || str.includes('"')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
+
+        if (format === 'csv') {
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${filenamePrefix}.csv"`);
+            res.write('\uFEFF'); // Tambahkan BOM untuk Excel
+
+            // Tulis Header CSV manual menggunakan escapeCSV agar seragam
+            const csvHeaders = columns.map(c => escapeCSV(c.header)).join(';') + '\n';
+            res.write(csvHeaders);
+        } else {
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${filenamePrefix}.xlsx"`);
+            workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ 
+                stream: res,
+                useStyles: true,
+                useSharedStrings: true
+            });
+            worksheet = workbook.addWorksheet('Laporan Transaksi', {
+                views: [{ state: 'frozen', ySplit: 1, xSplit: 0 }]
+            });
+            worksheet.columns = columns;
+
+            // Styling Header
+            worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+            worksheet.getRow(1).eachCell((cell) => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } }; // Biru Elegan
+            });
+        }
+
+        // Fungsi untuk sanitize injeksi CSV (CWE-1236)
+        const sanitizeCSV = (val) => {
+            if (typeof val === 'string' && /^[=+\-@]/.test(val)) {
+                return `'${val}`;
+            }
+            return val;
+        };
+
+        // EscapeCSV sudah dipindah ke atas
+
+        // FIX: Terapkan Cursor Batching Setara ORM (limit + offset chunking) untuk melindungi V8 Heap Memory
+        const batchSize = 100;
+        let offset = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+            const transactions = await Transaction.findAll({
+                where: whereCondition,
+                order: [['transaction_datetime', 'ASC']],
+                limit: batchSize,
+                offset: offset,
+                include: [
+                    {
+                        model: TransactionDetail,
+                        include: [
+                            {
+                                model: Product,
+                                attributes: ['product_name'],
+                                paranoid: false,
+                                include: [Category]
+                            }
+                        ]
+                    },
+                    {
+                        model: User,
+                        as: 'Cashier',
+                        attributes: ['user_id', 'username']
+                    }
+                ]
+            });
+
+            if (transactions.length === 0) {
+                hasMore = false;
+                break;
+            }
+
+            transactions.forEach((tx) => {
+                // Format waktu WIB
+                const dateObj = new Date(tx.transaction_datetime);
+                const dateStr = tx.transaction_datetime ? new Intl.DateTimeFormat('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                }).format(dateObj) : '-';
                 
-                let totalLaba = 0;
-                let marginStr = '-';
-                if (tx.transaction_type === 'sell' && tx.status === 'success') {
-                    totalLaba = (detail.selling_price - detail.capital_cost) * detail.quantity;
-                    const margin = ((detail.selling_price - detail.capital_cost) / detail.capital_cost) * 100;
-                    marginStr = isFinite(margin) ? `${margin.toFixed(2)}%` : '0%';
-                }
+                const typeStr = tx.transaction_type === 'sell' ? 'Penjualan' : 'Restock';
+                const statusStr = tx.status === 'success' ? 'Sukses' : (tx.status === 'cancelled' ? 'Dibatalkan' : tx.status);
+                const cashierName = sanitizeCSV(tx.Cashier ? tx.Cashier.username : 'Sistem');
+                const paymentMethod = 'Tunai';
 
-                worksheet.addRow({
-                    transaction_id: `#TRX-${tx.transaction_id}`,
-                    datetime: dateStr,
-                    type: typeStr,
-                    cashier: cashierName,
-                    status: statusStr,
-                    payment_method: paymentMethod,
-                    product_name: productName,
-                    category: categoryName,
-                    capital_cost: detail.capital_cost,
-                    selling_price: detail.selling_price,
-                    quantity: detail.quantity,
-                    sub_total: detail.sub_total,
-                    total_laba: totalLaba,
-                    margin: marginStr
+                tx.TransactionDetails.forEach((detail) => {
+                    const productName = sanitizeCSV(detail.Product ? detail.Product.product_name : 'Produk Dihapus');
+                    const categoryName = sanitizeCSV((detail.Product && detail.Product.Category) ? detail.Product.Category.category_name : 'Tanpa Kategori');
+                    
+                    let totalLaba = 0;
+                    let marginVal = 0;
+                    if (tx.transaction_type === 'sell' && tx.status === 'success') {
+                        totalLaba = (detail.selling_price - detail.capital_cost) * detail.quantity;
+                        const margin = ((detail.selling_price - detail.capital_cost) / detail.capital_cost);
+                        marginVal = isFinite(margin) ? margin : 0;
+                    }
+
+                    const rowData = {
+                        transaction_id: `#TRX-${tx.transaction_id}`,
+                        datetime: dateStr,
+                        type: typeStr,
+                        cashier: cashierName,
+                        status: statusStr,
+                        payment_method: paymentMethod,
+                        product_name: productName,
+                        category: categoryName,
+                        selling_price: Number(detail.selling_price) || 0,
+                        quantity: Number(detail.quantity) || 0,
+                        sub_total: Number(detail.sub_total) || 0
+                    };
+
+                    if (isOwner) {
+                        rowData.capital_cost = Number(detail.capital_cost) || 0;
+                        rowData.total_laba = Number(totalLaba) || 0;
+                        rowData.margin = Number(marginVal) || 0;
+                    }
+
+                    if (format === 'csv') {
+                        // Tulis baris CSV secara manual (streaming)
+                        const rowArray = columns.map(c => rowData[c.key]);
+                        const rowString = rowArray.map(escapeCSV).join(';') + '\n';
+                        res.write(rowString);
+                    } else {
+                        const row = worksheet.addRow(rowData);
+                        const currencyFmt = '[$Rp-421]#,##0';
+                        
+                        // FIX: Timpa objek style secara keseluruhan agar direkam ke XML oleh Stream
+                        row.getCell('selling_price').style = { numFmt: currencyFmt };
+                        row.getCell('sub_total').style = { numFmt: currencyFmt };
+                        if (isOwner) {
+                            row.getCell('capital_cost').style = { numFmt: currencyFmt };
+                            row.getCell('total_laba').style = { numFmt: currencyFmt };
+                            row.getCell('margin').style = { numFmt: '0.0%', alignment: { horizontal: 'center' } };
+                        }
+                        
+                        row.commit();
+                    }
                 });
             });
-        });
 
-        const currencyFormat = '"Rp"#,##0;[Red]\\-"Rp"#,##0';
-        ['I', 'J', 'L', 'M'].forEach(col => {
-            worksheet.getColumn(col).numFmt = currencyFormat;
-        });
+        offset += batchSize;
+        }
 
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        // FIX (CRITICAL-07): Sanitasi parameter date sebelum dimasukkan ke header HTTP
-        // untuk mencegah Header Injection Attack. Hanya izinkan karakter alfanumerik, dash, underscore.
-        const sanitizeFilename = (s) => (s || 'All').replace(/[^a-zA-Z0-9\-_]/g, '');
-        res.setHeader('Content-Disposition', `attachment; filename="Laporan_Transaksi_${sanitizeFilename(start)}_to_${sanitizeFilename(end)}.xlsx"`);
-
-        await workbook.xlsx.write(res);
-        res.end();
+        // Catch untuk menangani error jika stream closed sebelum selesai
+        try {
+            if (format === 'csv') {
+                res.end(); 
+            } else {
+                worksheet.commit();
+                await workbook.commit();
+                res.end();
+            }
+        } catch (error) {
+            console.error("Export Error:", error);
+            next(error);
+        }
     } catch (error) {
         console.error("Export Error:", error);
         next(error);
@@ -476,17 +580,17 @@ const getTransactionSummary = async (req, res, next) => {
                 attributes: [
                     // Total omzet dari penjualan (sell)
                     [
-                        literal(`SUM(CASE WHEN \`Transaction\`.\`transaction_type\` = 'sell' AND \`Transaction\`.\`status\` = 'success' THEN \`TransactionDetail\`.\`sub_total\` ELSE 0 END)`),
+                        sequelize.literal(`SUM(CASE WHEN \`Transaction\`.\`transaction_type\` = 'sell' AND \`Transaction\`.\`status\` = 'success' THEN \`TransactionDetail\`.\`sub_total\` ELSE 0 END)`),
                         'totalIncome'
                     ],
                     // Total laba bersih dari penjualan (selling_price - capital_cost) * qty
                     [
-                        literal(`SUM(CASE WHEN \`Transaction\`.\`transaction_type\` = 'sell' AND \`Transaction\`.\`status\` = 'success' THEN (\`TransactionDetail\`.\`selling_price\` - \`TransactionDetail\`.\`capital_cost\`) * \`TransactionDetail\`.\`quantity\` ELSE 0 END)`),
+                        sequelize.literal(`SUM(CASE WHEN \`Transaction\`.\`transaction_type\` = 'sell' AND \`Transaction\`.\`status\` = 'success' THEN (\`TransactionDetail\`.\`selling_price\` - \`TransactionDetail\`.\`capital_cost\`) * \`TransactionDetail\`.\`quantity\` ELSE 0 END)`),
                         'totalProfit'
                     ],
                     // Total nilai restock (buy)
                     [
-                        literal(`SUM(CASE WHEN \`Transaction\`.\`transaction_type\` = 'buy' AND \`Transaction\`.\`status\` = 'success' THEN \`TransactionDetail\`.\`sub_total\` ELSE 0 END)`),
+                        sequelize.literal(`SUM(CASE WHEN \`Transaction\`.\`transaction_type\` = 'buy' AND \`Transaction\`.\`status\` = 'success' THEN \`TransactionDetail\`.\`sub_total\` ELSE 0 END)`),
                         'totalRestock'
                     ]
                 ],
@@ -539,7 +643,7 @@ const unlockOvertime = async (req, res, next) => {
         // Anti-Clock Drift: Gunakan literal query MySQL untuk +1 Jam
         await sequelize.query(
             "UPDATE Users SET overtime_unlocked_until = CURRENT_TIMESTAMP + INTERVAL 1 HOUR WHERE user_id = ?",
-            { replacements: [req.user.id], type: sequelize.QueryTypes.UPDATE }
+            { replacements: [req.user.user_id || req.user.id], type: sequelize.QueryTypes.UPDATE }
         );
 
         res.json({ message: "Sesi lembur berhasil diaktifkan selama 1 jam." });

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiFetch, formatError } from '../../utils/api';
 import { formatRupiah } from '../../utils/format';
 
-export default function ReportModal({ isOpen, onClose, onExport }) {
+export default function ReportModal({ isOpen, onClose, onExport, onExportCsv }) {
     const [period, setPeriod] = useState('TODAY');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -65,7 +65,8 @@ export default function ReportModal({ isOpen, onClose, onExport }) {
         }
     };
 
-    const handleExportClick = () => {
+    const handleExportClick = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
         let start = "";
         let end = "";
         const today = new Date();
@@ -87,6 +88,31 @@ export default function ReportModal({ isOpen, onClose, onExport }) {
         }
 
         onExport(start, end);
+    };
+
+    const handleExportCsvClick = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        let start = "";
+        let end = "";
+        const today = new Date();
+
+        if (period === "TODAY") {
+            const offset = today.getTimezoneOffset() * 60000;
+            const localDate = (new Date(today - offset)).toISOString().split('T')[0];
+            start = localDate;
+            end = localDate;
+        } else if (period === "MONTH") {
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
+            start = `${year}-${month}-01`;
+            end = `${year}-${month}-${lastDay}`;
+        } else if (period === "CUSTOM" && startDate && endDate) {
+            start = startDate;
+            end = endDate;
+        }
+
+        onExportCsv(start, end);
     };
 
     if (!isOpen) return null;
@@ -134,29 +160,29 @@ export default function ReportModal({ isOpen, onClose, onExport }) {
                     </div>
 
                     {/* Summary Cards */}
-                    <div style={{ background: '#F9FAFB', padding: '16px', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-                        <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#374151', textAlign: 'center' }}>Ringkasan Data</h4>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                        <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#e5e7eb', textAlign: 'center' }}>Ringkasan Data</h4>
                         
                         {loading ? (
-                            <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>Memuat data...</div>
+                            <div style={{ textAlign: 'center', padding: '20px', color: '#9ca3af' }}>Memuat data...</div>
                         ) : error ? (
                             <div style={{ color: '#EF4444', textAlign: 'center', fontSize: '14px' }}>{error}</div>
                         ) : summary ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #D1D5DB', paddingBottom: '8px' }}>
-                                    <span style={{ color: '#6B7280' }}>Total Transaksi</span>
-                                    <span style={{ fontWeight: 'bold' }}>{summary.totalTransactions} TRX</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(255, 255, 255, 0.1)', paddingBottom: '8px' }}>
+                                    <span style={{ color: '#9ca3af' }}>Total Transaksi</span>
+                                    <span style={{ fontWeight: 'bold', color: '#f3f4f6' }}>{summary.totalTransactions} TRX</span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #D1D5DB', paddingBottom: '8px' }}>
-                                    <span style={{ color: '#6B7280' }}>Omzet Penjualan</span>
-                                    <span style={{ fontWeight: 'bold', color: '#22C55E' }}>{formatRupiah(summary.totalIncome)}</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(255, 255, 255, 0.1)', paddingBottom: '8px' }}>
+                                    <span style={{ color: '#9ca3af' }}>Omzet Penjualan</span>
+                                    <span style={{ fontWeight: 'bold', color: '#10B981' }}>{formatRupiah(summary.totalIncome)}</span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #D1D5DB', paddingBottom: '8px' }}>
-                                    <span style={{ color: '#6B7280' }}>Pengeluaran Restock</span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(255, 255, 255, 0.1)', paddingBottom: '8px' }}>
+                                    <span style={{ color: '#9ca3af' }}>Pengeluaran Restock</span>
                                     <span style={{ fontWeight: 'bold', color: '#EF4444' }}>{formatRupiah(summary.totalRestock)}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px' }}>
-                                    <span style={{ color: '#374151', fontWeight: 'bold' }}>Estimasi Laba Kotor</span>
+                                    <span style={{ color: '#e5e7eb', fontWeight: 'bold' }}>Estimasi Laba Kotor</span>
                                     <span style={{ fontWeight: 'bold', fontSize: '18px', color: summary.totalProfit >= 0 ? '#10B981' : '#EF4444' }}>
                                         {formatRupiah(summary.totalProfit)}
                                     </span>
@@ -165,19 +191,37 @@ export default function ReportModal({ isOpen, onClose, onExport }) {
                         ) : null}
                     </div>
 
-                    <button 
-                        onClick={handleExportClick}
-                        className="button"
-                        style={{ 
-                            background: "#10B981", color: "white", border: "none", 
-                            display: "flex", alignItems: "center", justifyContent: "center", 
-                            gap: "8px", padding: "12px", borderRadius: "8px", 
-                            fontWeight: "bold", cursor: "pointer", transition: "all 0.2s",
-                            width: "100%", fontSize: "16px"
-                        }}
-                    >
-                        <i className="fas fa-file-excel"></i> Export Laporan ke Excel
-                    </button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        <button 
+                            type="button"
+                            onClick={handleExportClick}
+                            className="button"
+                            style={{ 
+                                background: "rgba(16, 185, 129, 0.1)", color: "#10B981", border: "1px solid rgba(16, 185, 129, 0.2)", 
+                                display: "flex", alignItems: "center", justifyContent: "center", 
+                                gap: "8px", padding: "12px", borderRadius: "8px", 
+                                fontWeight: "bold", cursor: "pointer", transition: "all 0.2s",
+                                width: "100%", fontSize: "16px"
+                            }}
+                        >
+                            <i className="fas fa-file-excel"></i> Export Laporan ke Excel
+                        </button>
+                        
+                        <button 
+                            type="button"
+                            onClick={handleExportCsvClick}
+                            className="button"
+                            style={{ 
+                                background: "rgba(59, 130, 246, 0.1)", color: "#3B82F6", border: "1px solid rgba(59, 130, 246, 0.2)", 
+                                display: "flex", alignItems: "center", justifyContent: "center", 
+                                gap: "8px", padding: "12px", borderRadius: "8px", 
+                                fontWeight: "bold", cursor: "pointer", transition: "all 0.2s",
+                                width: "100%", fontSize: "16px"
+                            }}
+                        >
+                            <i className="fas fa-file-csv"></i> Export Laporan ke CSV
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

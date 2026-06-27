@@ -8,7 +8,7 @@
  */
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { clearAuthSession, getCurrentUser } from '../utils/api';
+import { apiFetch, clearAuthSession, getCurrentUser } from '../utils/api';
 import LogoutModal from './LogoutModal';
 import ChangePasswordModal from './ChangePasswordModal';
 import { useTheme } from '../hooks/useTheme';
@@ -45,13 +45,20 @@ function Sidebar() {
 
     const menu = allMenu.filter(item => !role || item.roles.includes(role));
 
-    const confirmLogout = () => {
-        clearAuthSession();
-        navigate('/login');
+    const confirmLogout = async () => {
+        try {
+            // FIX (V4.0): Panggil API Backend untuk membersihkan HttpOnly Cookie
+            // dan mencatat token JTI ke BlacklistedTokens
+            await apiFetch('/auth/logout', { method: 'POST' });
+        } catch (e) {
+            console.error("Gagal logout di server:", e);
+        } finally {
+            clearAuthSession();
+            navigate('/');
+        }
     };
 
     const replayTour = () => {
-        localStorage.removeItem('tourCompleted');
         if (window.location.pathname !== '/dashboard') {
             navigate('/dashboard');
         } else {
@@ -86,7 +93,7 @@ function Sidebar() {
                     </div>
 
                     {username && (
-                        <div className="px-3 mb-4 text-center">
+                        <div className="px-3 mb-4 text-center sidebar-user-info">
                             <small className="d-block text-white-50">Selamat datang,</small>
                             <div className="fw-bold text-white h6 mb-0">Hi, {username}!</div>
                             {role && (
@@ -106,7 +113,7 @@ function Sidebar() {
                     )}
                 </div>
 
-                <div className="flex-grow-1 overflow-auto custom-scrollbar" style={{ minHeight: 0, marginRight: "-12px", paddingRight: "12px" }}>
+                <div className="flex-grow-1 overflow-auto hide-scrollbar custom-scrollbar" style={{ minHeight: 0, marginRight: "-12px", paddingRight: "12px" }}>
                     <ul className="nav flex-column">
                         {menu.map((item) => (
                             <li className="nav-item" key={item.path}>

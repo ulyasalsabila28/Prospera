@@ -138,6 +138,7 @@ export function useTransactionLogic() {
         openTransactionModal: historyHook.openTransactionModal,
         closeTransactionModal: historyHook.closeTransactionModal,
         handleExportExcel: historyHook.handleExportExcel,
+        handleExportCsv: historyHook.handleExportCsv,
         showReportModal: historyHook.showReportModal,
         setShowReportModal: historyHook.setShowReportModal,
 

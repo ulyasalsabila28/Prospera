@@ -1,189 +1,215 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { apiFetch, setAuthSession, getToken, getUserRole, formatError } from "../utils/api";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { apiFetch, setAuthSession, getCurrentUser, formatError } from "../utils/api";
+import heroImg1 from "../assets/kasair_local_boutique.png";
+import heroImg2 from "../assets/prospera_slide_2.png";
+import heroImg3 from "../assets/prospera_slide_3.png";
+import heroImg4 from "../assets/prospera_slide_4.png";
 
-// Regex standar industri — SELARAS dengan backend validationMiddleware.js
-import { EMAIL_REGEX } from "../utils/validators";
+const slides = [heroImg1, heroImg2, heroImg3, heroImg4];
+
+const loginSchema = z.object({
+  email: z.string().min(1, "Email wajib diisi.").email("Format email tidak valid."),
+  password: z.string().min(1, "Password wajib diisi.").max(64, "Password maksimal 64 karakter.")
+});
 
 export default function Login() {
-  const [activeTab, setActiveTab] = useState("owner"); // "owner" atau "karyawan"
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState("owner");
+  const [showPassword, setShowPassword] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(() => {
+    return parseInt(sessionStorage.getItem("authSlideIndex") || "0", 10);
+  });
   const nav = useNavigate();
 
-  // AUTO-LOGIN: Cek token saat halaman dimuat
+  const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" }
+  });
+
   useEffect(() => {
-    const token = getToken();
-    const role = getUserRole();
-    if (token && role) {
-      // Token ada, redirect sesuai role
-      if (role === 'karyawan') {
-        nav("/transaction", { replace: true });
-      } else {
-        nav("/dashboard", { replace: true });
-      }
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => {
+        const nextSlide = (prev + 1) % slides.length;
+        sessionStorage.setItem("authSlideIndex", nextSlide);
+        return nextSlide;
+      });
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const user = getCurrentUser();
+    if (user && user.role) {
+      if (user.role === 'karyawan') nav("/transaction", { replace: true });
+      else nav("/dashboard", { replace: true });
     }
   }, [nav]);
 
-  const login = async (e) => {
-    if (e) e.preventDefault();
-    setMessage("");
-
-    // --- VALIDASI CLIENT-SIDE (selaras dengan backend) ---
-    if (!email.trim()) {
-      setMessage("Email wajib diisi.");
-      return;
-    }
-    if (!EMAIL_REGEX.test(email.trim())) {
-      setMessage("Format email tidak valid.");
-      return;
-    }
-    if (!password.trim()) {
-      setMessage("Password wajib diisi.");
-      return;
-    }
-
-    setIsSubmitting(true);
+  const onSubmit = async (data) => {
     try {
-      const data = await apiFetch("/auth/login", {
+      const response = await apiFetch("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password })
+        body: JSON.stringify(data)
       });
 
-      // Verifikasi apakah role yang didapat sesuai dengan tab yang dipilih
-      if (data.user.role !== activeTab) {
+      if (response.user.role !== activeTab) {
         const tabLabel = activeTab === 'owner' ? 'Owner' : 'Karyawan';
-        const roleLabel = data.user.role === 'owner' ? 'Owner' : 'Karyawan';
-        setMessage(`Email ini terdaftar sebagai ${roleLabel}, bukan ${tabLabel}. Silakan pindah tab.`);
+        const roleLabel = response.user.role === 'owner' ? 'Owner' : 'Karyawan';
+        setError("root", { message: `Email terdaftar sebagai ${roleLabel}, bukan ${tabLabel}. Silakan pindah tab.` });
         return;
       }
 
-      setAuthSession(data.token, data.user);
+      setAuthSession(null, response.user);
 
-      // RBAC: Redirect berdasarkan role
-      if (data.user.role === 'karyawan') {
-        nav("/transaction");
-      } else {
-        nav("/dashboard");
-      }
+      if (response.user.role === 'karyawan') nav("/transaction");
+      else nav("/dashboard");
     } catch (err) {
-      // apiFetch melempar ApiError dengan pesan Indonesia; fallback untuk error lain
-      const msg = err.message?.includes('Sesi Anda') 
-        ? "Email atau Password yang Anda masukkan salah." 
-        : formatError(err);
-      setMessage(msg);
-    } finally {
-      setIsSubmitting(false);
+      const msg = err.message || formatError(err);
+      if (msg.toLowerCase().includes("email") || msg.toLowerCase().includes("sandi") || msg.toLowerCase().includes("sesi") || msg.toLowerCase().includes("autentikasi")) {
+        setError("email", { message: msg });
+        setError("password", { message: msg });
+      } else {
+        setError("root", { message: msg });
+      }
     }
-  };
-
-  // Handler: Submit form dengan Enter (bisa dihapus karena sudah pakai form onSubmit)
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !isSubmitting) login(e);
   };
 
   return (
     <div className="login-page">
-      <div className="login-card" style={{ paddingTop: '20px' }}>
-        <h2 style={{ marginBottom: '5px' }}>Welcome to Prospera</h2>
-        <p className="subtitle" style={{ marginBottom: '25px' }}>Ready to Prosper</p>
-
-        {/* Tabs untuk Role */}
-        <div style={{ display: 'flex', marginBottom: '25px', borderBottom: '1px solid #E5E7EB' }}>
-          <button 
-            style={{ 
-              flex: 1, 
-              padding: '10px', 
-              background: 'none', 
-              border: 'none', 
-              borderBottom: activeTab === 'owner' ? '2px solid #2563EB' : 'none', 
-              color: activeTab === 'owner' ? '#2563EB' : '#6B7280', 
-              fontWeight: activeTab === 'owner' ? 'bold' : 'normal', 
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-            onClick={() => {
-              setActiveTab('owner');
-              setMessage("");
-            }}
-          >
-            Login Owner
-          </button>
-          <button 
-            style={{ 
-              flex: 1, 
-              padding: '10px', 
-              background: 'none', 
-              border: 'none', 
-              borderBottom: activeTab === 'karyawan' ? '2px solid #2563EB' : 'none', 
-              color: activeTab === 'karyawan' ? '#2563EB' : '#6B7280', 
-              fontWeight: activeTab === 'karyawan' ? 'bold' : 'normal', 
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-            onClick={() => {
-              setActiveTab('karyawan');
-              setMessage("");
-            }}
-          >
-            Login Karyawan
-          </button>
+      <div className="login-container">
+        {/* LEFT SIDE - IMAGE */}
+        <div className="login-left">
+          {slides.map((img, idx) => (
+            <img 
+              key={idx} 
+              src={img} 
+              alt="Prospera Kasir POS UMKM" 
+              style={{
+                position: "absolute",
+                top: 0, left: 0, width: "100%", height: "100%",
+                objectFit: "cover",
+                opacity: idx === currentSlide ? 1 : 0,
+                transition: "opacity 1s ease-in-out"
+              }} 
+            />
+          ))}
+          <div className="login-left-overlay">
+            <div className="d-flex justify-content-between align-items-start">
+              <div className="login-left-logo">PROSPERA</div>
+              <div className="d-flex mt-2" style={{ gap: "6px" }}>
+                {slides.map((_, idx) => (
+                  <div 
+                    key={idx} 
+                    style={{
+                      width: idx === currentSlide ? "24px" : "8px",
+                      height: "8px",
+                      borderRadius: "4px",
+                      backgroundColor: "white",
+                      opacity: idx === currentSlide ? 1 : 0.5,
+                      transition: "all 0.3s ease"
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="login-left-caption">
+              Kelola operasional toko lebih cerdas dan efisien. Dengan Prospera, nikmati 
+              pengalaman transaksi kasir anti-lag yang terintegrasi langsung dengan dasbor 
+              analitik dan sistem AI proaktif untuk mengamankan aset bisnis Anda.
+            </div>
+          </div>
         </div>
 
-        {/* Form-Level Feedback (Inline) */}
-        {message && (
-          <div style={{ 
-            padding: "10px", 
-            borderRadius: "5px", 
-            marginBottom: "12px", 
-            background: "#FEE2E2", 
-            color: "#991B1B", 
-            textAlign: "center", 
-            fontSize: "14px",
-            border: "1px solid #EF4444"
-          }}>
-            {message}
-          </div>
-        )}
+        {/* RIGHT SIDE - FORM */}
+        <div className="login-right">
+          <h1 className="login-title">Selamat Datang di Prospera!</h1>
+          <p className="login-subtitle">Masuk ke Akun Anda</p>
 
-        <form onSubmit={login}>
-          <input 
-            className="input" 
-            placeholder={activeTab === 'owner' ? "Email Pemilik" : "Email Karyawan"} 
-            type="email"
-            value={email} 
-            onChange={e => setEmail(e.target.value)} 
-            onKeyDown={handleKeyDown} 
-          />
-          <input 
-            className="input" 
-            placeholder="Password" 
-            type="password"
-            value={password} 
-            onChange={e => setPassword(e.target.value)} 
-            onKeyDown={handleKeyDown} 
-          />
-            
-          <div> 
-            <button type="submit" className="button" disabled={isSubmitting}
-              style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? "not-allowed" : "pointer", marginTop: '10px' }}>
-              {isSubmitting ? "Memproses..." : "Masuk"}
+          <div className="d-flex mb-4" style={{ gap: '1rem' }}>
+            <button 
+              type="button"
+              className={`btn flex-grow-1 rounded-pill ${activeTab === 'owner' ? 'btn-dark' : 'btn-outline-secondary'}`}
+              onClick={() => setActiveTab('owner')}
+              style={{ fontWeight: 600, padding: '0.6rem' }}
+            >
+              Owner
+            </button>
+            <button 
+              type="button"
+              className={`btn flex-grow-1 rounded-pill ${activeTab === 'karyawan' ? 'btn-dark' : 'btn-outline-secondary'}`}
+              onClick={() => setActiveTab('karyawan')}
+              style={{ fontWeight: 600, padding: '0.6rem' }}
+            >
+              Karyawan
             </button>
           </div>
-        </form>
 
-        {/* Link Daftar HANYA muncul untuk Owner */}
-        {activeTab === 'owner' ? (
-          <p style={{ textAlign: "center", marginTop: "20px", fontSize: "13px", color: "var(--text-secondary)" }}>
-            Belum punya akun toko? <Link to="/register" style={{ color: "#2563EB", textDecoration: "none", fontWeight: "bold" }}>Daftar sekarang</Link>
-          </p>
-        ) : (
-          <p style={{ textAlign: "center", marginTop: "20px", fontSize: "13px", color: "var(--text-secondary)" }}>
-            Akun Karyawan hanya bisa dibuat oleh Owner.
-          </p>
-        )}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {errors.root && (
+              <div className="alert alert-danger py-2 fs-6 rounded-3">{errors.root.message}</div>
+            )}
+            
+            <div className="prospera-form-group">
+              <label className="prospera-form-label">Alamat Email</label>
+              <div className="prospera-input-wrapper">
+                <Mail size={18} className="prospera-input-icon" />
+                <input 
+                  type="email" 
+                  className={`prospera-input ${errors.email ? 'is-invalid' : ''}`}
+                  placeholder="Masukkan alamat email anda"
+                  {...register("email")}
+                />
+              </div>
+              {errors.email && <div className="text-danger small mt-1 ms-2">{errors.email.message}</div>}
+            </div>
+
+            <div className="prospera-form-group mb-2">
+              <label className="prospera-form-label">Kata Sandi</label>
+              <div className="prospera-input-wrapper">
+                <Lock size={18} className="prospera-input-icon" />
+                <input 
+                  type={showPassword ? "text" : "password"}
+                  className={`prospera-input ${errors.password ? 'is-invalid' : ''}`}
+                  placeholder="Masukkan kata sandi anda"
+                  {...register("password")}
+                />
+                <button 
+                  type="button"
+                  className="prospera-eye-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex="-1"
+                >
+                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                </button>
+              </div>
+              {errors.password && <div className="text-danger small mt-1 ms-2">{errors.password.message}</div>}
+            </div>
+
+            <div className="text-end mb-4">
+              <a href="#" className="text-muted small text-decoration-none fw-medium">Lupa Password?</a>
+            </div>
+
+            <button type="submit" className="prospera-btn" disabled={isSubmitting}>
+              {isSubmitting ? 'Memproses...' : 'Masuk'}
+            </button>
+
+            {activeTab === 'owner' && (
+              <div className="text-center mt-4">
+                <p className="text-muted small">
+                  Belum Punya Akun? <Link to="/register" className="prospera-link">Daftar Sekarang</Link>
+                </p>
+              </div>
+            )}
+            
+            <div className="text-center mt-4 text-muted" style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+              &copy; 2026 PROSPERA All Rights Reserved
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

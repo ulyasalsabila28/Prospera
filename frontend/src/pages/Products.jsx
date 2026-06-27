@@ -10,15 +10,20 @@ import { useEffect, useState, useCallback } from "react";
 import { apiFetch, getUserRole, formatError } from "../utils/api";
 import ProductForm from "../components/ProductForm";
 import ProductList from "../components/ProductList";
+import { useToast } from "../contexts/ToastContext";
+import { useConfirm } from "../contexts/ConfirmContext";
 
 export default function Products() {
   const role = getUserRole();
+  const { showToast } = useToast();
+  const { showConfirm } = useConfirm();
+  
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState(""); 
-  const [recentlyAdded, setRecentlyAdded] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editData, setEditData] = useState(null);
-  const [message, setMessage] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
 
@@ -41,9 +46,9 @@ export default function Products() {
         setProducts(Array.isArray(data) ? data : []);
       }
     } catch (error) {
-      setMessage(formatError(error));
+      showToast(formatError(error), 'danger');
     }
-  }, [limit]);
+  }, [limit, showToast]);
 
   useEffect(() => {
     fetchProducts();
@@ -65,23 +70,27 @@ export default function Products() {
   }, []);
 
   const handleSave = async (payload) => {
-    if (selectedProduct) {
-      await apiFetch(`/products/${selectedProduct}`, {
-        method: "PUT",
-        body: JSON.stringify(payload)
-      });
-      setMessage("Produk berhasil diperbarui.");
-    } else {
-      await apiFetch("/products", {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      setMessage("Produk berhasil ditambahkan.");
+    try {
+      if (selectedProduct) {
+        await apiFetch(`/products/${selectedProduct}`, {
+          method: "PUT",
+          body: JSON.stringify(payload)
+        });
+        showToast("Produk berhasil diperbarui.", 'success');
+      } else {
+        await apiFetch("/products", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        showToast("Produk berhasil ditambahkan.", 'success');
+      }
+      setSelectedProduct(null);
+      setEditData(null);
+      fetchProducts(currentPage);
+    } catch (error) {
+      showToast(formatError(error), 'danger');
+      throw error; // Rethrow to let ProductForm know about the failure
     }
-    setRecentlyAdded({ name: payload.product_name });
-    setSelectedProduct(null);
-    setEditData(null);
-    fetchProducts(currentPage);
   };
 
   const handleEdit = (product) => {
@@ -94,37 +103,39 @@ export default function Products() {
       category_id: product.category_id_fk || "",
       expired_date: product.expired_date || ""
     });
-    setMessage("");
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (productId) => {
-    if (!window.confirm("Yakin ingin menghapus produk ini?")) return;
-    try {
-      await apiFetch(`/products/${productId}`, { method: "DELETE" });
-      setMessage("Produk berhasil dihapus.");
-      fetchProducts(currentPage);
-    } catch (err) {
-      setMessage(formatError(err));
-    }
+    showConfirm({
+      title: 'Hapus Produk',
+      message: 'Apakah Anda yakin ingin menghapus produk ini? Aksi ini tidak dapat dibatalkan.',
+      isDanger: true,
+      confirmText: 'Ya, Hapus',
+      onConfirm: async () => {
+        setDeletingId(productId);
+        try {
+          await apiFetch(`/products/${productId}`, { method: "DELETE" });
+          showToast("Produk berhasil dihapus.", 'success');
+          fetchProducts(currentPage);
+        } catch (err) {
+          showToast(formatError(err), 'danger');
+        } finally {
+          setDeletingId(null);
+        }
+      }
+    });
   };
 
   const handleCancel = () => {
     setSelectedProduct(null);
     setEditData(null);
-    setMessage("");
   };
 
   return (
     <>
       <div className="card">
         <h2>📦 Product Management</h2>
-
-        {message && (
-          <div className={`product-alert ${message.includes("berhasil") ? "product-alert--success" : "product-alert--error"}`}>
-            {message}
-          </div>
-        )}
 
         {(role === 'owner' || role === 'karyawan') && (
           <ProductForm 
@@ -133,18 +144,6 @@ export default function Products() {
             onSave={handleSave}
             onCancel={handleCancel}
           />
-        )}
-
-        {recentlyAdded && (
-          <div className="card product-recently-added">
-            <h3 className="text-green">✨ Recently Added</h3>
-            <div className="product-item">
-              <div>
-                <b>{recentlyAdded.name}</b>
-                <div className="stock">Baru saja berhasil didaftarkan ke database!</div>
-              </div>
-            </div>
-          </div>
         )}
 
         <ProductList 
@@ -157,6 +156,7 @@ export default function Products() {
           role={role}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          deletingId={deletingId}
           pagination={{ currentPage, totalPages, totalItems }}
           onPageChange={fetchProducts}
         />

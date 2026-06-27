@@ -1,8 +1,21 @@
 import { formatRupiah, formatDatetime } from '../../utils/format';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CartTable({
   cartItems, removeItem, setCartItems, saveTransaction, saving, totalAmount
 }) {
+  const { showConfirm } = useConfirm();
+
+  const handleClearCart = () => {
+      showConfirm({
+          title: "Kosongkan Keranjang?",
+          message: "Apakah Anda yakin ingin mengosongkan semua item dalam keranjang ini?",
+          confirmText: "Ya, Kosongkan",
+          isDanger: true,
+          onConfirm: () => setCartItems([])
+      });
+  };
+
   return (
     <div className="card" style={{ marginBottom: "24px" }}>
       <h3 style={{ marginTop: 0 }}>Keranjang Belanja</h3>
@@ -66,7 +79,7 @@ export default function CartTable({
             <button 
                 className="button" 
                 style={{ background: "transparent", color: "#EF4444", border: "1px solid #EF4444", opacity: cartItems.length === 0 ? 0.5 : 1, cursor: cartItems.length === 0 ? "not-allowed" : "pointer" }} 
-                onClick={() => setCartItems([])} 
+                onClick={handleClearCart} 
                 disabled={saving || cartItems.length === 0}
             >
                 Kosongkan Keranjang

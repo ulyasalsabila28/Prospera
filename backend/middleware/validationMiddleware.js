@@ -3,6 +3,7 @@
  * Semua logika validasi dipindahkan dari Controller ke sini
  * sesuai prinsip Clean Architecture & Separation of Concerns.
  */
+const { parsePhoneNumberFromString } = require('libphonenumber-js');
 
 // Regex standar industri untuk validasi format email
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -15,7 +16,7 @@ const MAX_INTEGER = 999_999_999;
  * Validasi input untuk registrasi pengguna baru
  */
 const validateRegister = (req, res, next) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, phone_number } = req.body;
 
     if (!username || String(username).trim().length < 3) {
         return res.status(400).json({ message: "Nama Lengkap / Nama Toko wajib diisi dan minimal 3 karakter." });
@@ -44,9 +45,26 @@ const validateRegister = (req, res, next) => {
         return res.status(400).json({ message: "Password maksimal 64 karakter." });
     }
 
-    // Sanitasi: simpan nilai yang sudah dibersihkan ke req.body
+    // Sanitasi email
     req.body.username = String(username).trim();
     req.body.email = String(email).trim().toLowerCase();
+
+    // Normalisasi Nomor Handphone ke E.164 (atau set null)
+    if (!phone_number || String(phone_number).trim() === '') {
+        req.body.phone_number = null;
+    } else {
+        let phone = String(phone_number).trim();
+        
+        // Parsing dan Validasi dengan libphonenumber-js (default ID jika tidak ada kode negara)
+        const parsedPhoneNumber = parsePhoneNumberFromString(phone, 'ID');
+        
+        if (!parsedPhoneNumber || !parsedPhoneNumber.isValid()) {
+            return res.status(400).json({ message: "Nomor handphone tidak valid atau format salah." });
+        }
+        
+        // Simpan dalam format E.164 baku
+        req.body.phone_number = parsedPhoneNumber.format('E.164');
+    }
 
     next();
 };
@@ -67,6 +85,10 @@ const validateLogin = (req, res, next) => {
 
     if (!password || String(password).trim() === '') {
         return res.status(400).json({ message: "Password wajib diisi." });
+    }
+
+    if (String(password).length > 64) {
+        return res.status(400).json({ message: "Password maksimal 64 karakter." });
     }
 
     // Sanitasi email

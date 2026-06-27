@@ -52,7 +52,8 @@ module.exports = (sequelize, DataTypes) => {
     indexes: [
       { fields: ['user_id_fk'] },          // Filter per toko (dipakai di SETIAP query)
       { fields: ['category_id_fk'] },      // JOIN ke Category
-      { fields: ['expired_date'] }         // Query SmartExpiry (filter produk mendekati kadaluarsa)
+      { fields: ['expired_date'] },        // Query SmartExpiry (filter produk mendekati kadaluarsa)
+      { fields: ['createdAt'] }            // Filter range tanggal
     ]
   });
 

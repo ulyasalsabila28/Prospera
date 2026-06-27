@@ -36,7 +36,10 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     tableName: 'Transaction_details',
-    timestamps: false,
+    timestamps: true,
+    createdAt: false,
+    updatedAt: false,
+    paranoid: true, // Soft delete (deletedAt)
     // FIX (HIGH-09): Index untuk JOIN dan analytics queries.
     // product_id_fk di-JOIN pada setiap query analytics breakdown produk.
     // transaction_id_fk di-JOIN pada setiap eager load history detail.

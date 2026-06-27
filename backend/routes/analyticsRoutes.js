@@ -3,6 +3,7 @@ const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
 const authorizeRole = require("../middleware/authorizeRole");
+const { exportLimiter } = require('../middleware/rateLimiter');
 
 // Import fungsi analitik dari analyticsController
 const {
@@ -29,7 +30,7 @@ router.get("/loss-products", authMiddleware, authorizeRole('owner'), getLossProd
 // FIX (SPOILAGE-01): Endpoint rincian kerugian kedaluwarsa (pemusnahan stok expired)
 router.get("/spoilage-log", authMiddleware, authorizeRole('owner'), getSpoilageLoss);
 
-router.get("/summary/export/excel", authMiddleware, authorizeRole('owner'), exportSummaryExcel); 
-router.get("/summary/export/csv", authMiddleware, authorizeRole('owner'), exportSummaryCsv);
+router.get("/summary/export/excel", authMiddleware, exportLimiter, exportSummaryExcel); 
+router.get("/summary/export/csv", authMiddleware, exportLimiter, exportSummaryCsv);
 
 module.exports = router;

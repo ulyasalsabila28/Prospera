@@ -1,9 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { apiFetch, formatError } from "../utils/api";
+import { useToast } from "../contexts/ToastContext";
+import { useConfirm } from "../contexts/ConfirmContext";
 
 export default function Categories() {
   const [categories, setCategories] = useState([]);
-  const [message, setMessage] = useState("");
+  const { showToast } = useToast();
+  const { showConfirm } = useConfirm();
+  
+  // Loading States
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   
   // Form State
   const [showForm, setShowForm] = useState(false);
@@ -16,9 +23,9 @@ export default function Categories() {
       const data = await apiFetch("/categories");
       setCategories(data.categories || []);
     } catch (error) {
-      setMessage(formatError(error));
+      showToast(formatError(error), 'danger');
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     fetchCategories();
@@ -29,7 +36,6 @@ export default function Categories() {
     setCategoryName(category.category_name);
     setRequiresExpiredDate(category.requires_expired_date);
     setShowForm(true);
-    setMessage("");
   };
 
   const handleCreateNew = () => {
@@ -37,12 +43,11 @@ export default function Categories() {
     setCategoryName("");
     setRequiresExpiredDate(false);
     setShowForm(true);
-    setMessage("");
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setMessage("");
+    setIsSubmitting(true);
     try {
       const payload = {
         category_name: categoryName,
@@ -54,31 +59,43 @@ export default function Categories() {
           method: "PUT",
           body: JSON.stringify(payload)
         });
-        setMessage("Kategori berhasil diperbarui.");
+        showToast("Kategori berhasil diperbarui.", 'success');
       } else {
         await apiFetch("/categories", {
           method: "POST",
           body: JSON.stringify(payload)
         });
-        setMessage("Kategori berhasil ditambahkan.");
+        showToast("Kategori berhasil ditambahkan.", 'success');
       }
       
       setShowForm(false);
       fetchCategories();
     } catch (error) {
-      setMessage(formatError(error));
+      showToast(formatError(error), 'danger');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus kategori ini?")) return;
-    try {
-      await apiFetch(`/categories/${id}`, { method: "DELETE" });
-      setMessage("Kategori berhasil dihapus.");
-      fetchCategories();
-    } catch (error) {
-      setMessage(formatError(error));
-    }
+    showConfirm({
+      title: 'Hapus Kategori',
+      message: 'Apakah Anda yakin ingin menghapus kategori ini? Aksi ini tidak dapat dibatalkan.',
+      isDanger: true,
+      confirmText: 'Ya, Hapus',
+      onConfirm: async () => {
+        setDeletingId(id);
+        try {
+          await apiFetch(`/categories/${id}`, { method: "DELETE" });
+          showToast("Kategori berhasil dihapus.", 'success');
+          fetchCategories();
+        } catch (error) {
+          showToast(formatError(error), 'danger');
+        } finally {
+          setDeletingId(null);
+        }
+      }
+    });
   };
 
   return (
@@ -91,13 +108,6 @@ export default function Categories() {
           </button>
         )}
       </div>
-
-      {message && (
-        <div className={`alert ${message.includes('berhasil') ? 'alert-success' : 'alert-danger'} alert-dismissible fade show`} role="alert">
-          {message}
-          <button type="button" className="btn-close" onClick={() => setMessage("")}></button>
-        </div>
-      )}
 
       {showForm ? (
         <div className="card border-0 shadow-sm mb-4">
@@ -129,10 +139,14 @@ export default function Categories() {
                 </label>
               </div>
               <div className="d-flex gap-2">
-                <button type="submit" className="button button-primary">
-                  <i className="fas fa-save me-2"></i> Simpan
+                <button type="submit" className="button button-primary" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Menyimpan...</>
+                  ) : (
+                    <><i className="fas fa-save me-2"></i> Simpan</>
+                  )}
                 </button>
-                <button type="button" className="button button-outline" onClick={() => setShowForm(false)}>
+                <button type="button" className="button button-outline" onClick={() => setShowForm(false)} disabled={isSubmitting}>
                   Batal
                 </button>
               </div>
@@ -172,6 +186,7 @@ export default function Categories() {
                             className="btn btn-sm btn-outline-primary me-2" 
                             style={{ borderRadius: "8px" }}
                             onClick={() => handleEdit(cat)}
+                            disabled={deletingId === cat.category_id}
                           >
                             <i className="fas fa-edit"></i>
                           </button>
@@ -179,8 +194,13 @@ export default function Categories() {
                             className="btn btn-sm btn-outline-danger" 
                             style={{ borderRadius: "8px" }}
                             onClick={() => handleDelete(cat.category_id)}
+                            disabled={deletingId === cat.category_id}
                           >
-                            <i className="fas fa-trash"></i>
+                            {deletingId === cat.category_id ? (
+                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            ) : (
+                              <i className="fas fa-trash"></i>
+                            )}
                           </button>
                         </td>
                       </tr>

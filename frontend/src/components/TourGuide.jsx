@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Joyride, STATUS, ACTIONS } from 'react-joyride';
+import { apiFetch, getCurrentUser, setAuthSession, getToken } from '../utils/api';
 
 function TourGuide() {
     const [run, setRun] = useState(false);
@@ -22,7 +23,7 @@ function TourGuide() {
             content: (
                 <div className="p-1">
                     <h6 className="fw-bold text-primary mb-2"><i className="fas fa-box-open me-2"></i>Produk & Inventaris</h6>
-                    <p className="mb-0" style={{ fontSize: '13px', opacity: 0.8 }}>Langkah pertama Anda: Daftarkan barang dagangan, atur harga modal, dan pantau peringatan kedaluwarsa di sini.</p>
+                    <p className="mb-0" style={{ fontSize: '13px', opacity: 0.8 }}>Langkah pertama Anda: Daftarkan barang dagangan dan atur harga modal di sini.</p>
                 </div>
             ),
             placement: 'right',
@@ -44,7 +45,7 @@ function TourGuide() {
             content: (
                 <div className="p-1">
                     <h6 className="fw-bold text-info mb-2"><i className="fas fa-chart-bar me-2"></i>Analitik Otomatis</h6>
-                    <p className="mb-0" style={{ fontSize: '13px', opacity: 0.8 }}>Setiap transaksi akan langsung dihitung menjadi Laporan Penjualan dan Laba-Rugi secara real-time!</p>
+                    <p className="mb-0" style={{ fontSize: '13px', opacity: 0.8 }}>Setiap transaksi akan langsung dihitung menjadi Laporan Penjualan dan Laba-Rugi secara real-time! Untuk laporan lebih lengkap, silakan cek halaman Analitik Bisnis.</p>
                 </div>
             ),
             placement: 'bottom',
@@ -62,11 +63,22 @@ function TourGuide() {
             disableBeacon: true,
         },
         {
+            target: '[data-tour="tour-expiry"]',
+            content: (
+                <div className="p-1">
+                    <h6 className="fw-bold text-warning mb-2" style={{ color: '#eab308' }}><i className="fas fa-calendar-times me-2"></i>Peringatan Kedaluwarsa</h6>
+                    <p className="mb-0" style={{ fontSize: '13px', opacity: 0.8 }}>Pantau produk yang mendekati masa kedaluwarsa secara otomatis. Selengkapnya bisa diakses di halaman Fitur Pintar.</p>
+                </div>
+            ),
+            placement: 'bottom',
+            disableBeacon: true,
+        },
+        {
             target: '[data-tour="tour-ai-insight"]',
             content: (
                 <div className="p-1">
                     <h6 className="fw-bold text-warning mb-2" style={{ color: '#eab308' }}><i className="fas fa-robot me-2"></i>Asisten AI Cerdas</h6>
-                    <p className="mb-0" style={{ fontSize: '13px', opacity: 0.8 }}>Kehabisan stok? Jangan khawatir, AI Prospera akan memprediksi penjualan bulan depan dan menyarankan produk apa saja yang wajib di-restock.</p>
+                    <p className="mb-0" style={{ fontSize: '13px', opacity: 0.8 }}>Kehabisan stok? Jangan khawatir, AI Prospera akan memprediksi penjualan bulan depan dan menyarankan produk apa saja yang wajib di-restock. Selengkapnya bisa diakses di halaman Fitur Pintar.</p>
                 </div>
             ),
             placement: 'top',
@@ -75,29 +87,50 @@ function TourGuide() {
     ];
 
     const location = useLocation();
-    const [tourKey, setTourKey] = useState(Date.now()); // FIX: Force remount Joyride on replay
+    const [tourKey, setTourKey] = useState(() => Date.now()); // FIX: Use callback for impure function
 
     // Inisialisasi tur HANYA jika berada di halaman Dashboard
     useEffect(() => {
-        const hasSeenTour = localStorage.getItem('tourCompleted');
+        let isMounted = true;
+        let timer = null;
+        const user = getCurrentUser();
+        const hasCompletedTour = user?.has_completed_tour;
         
-        if (!hasSeenTour && location.pathname === '/dashboard') {
-            // FIX (Enterprise UX): Segera tandai selesai secara sinkron di milidetik pertama (0ms).
-            // Ini mencegah race condition di mana React Strict Mode atau refresh browser (F5) 
-            // menggagalkan penyimpanan ke localStorage sebelum animasi setTimeout selesai.
-            localStorage.setItem('tourCompleted', 'true');
-
-            const timer = setTimeout(() => {
-                setRun(true);
+        if (!hasCompletedTour && location.pathname === '/dashboard') {
+            timer = setTimeout(() => {
+                if (isMounted) {
+                    setRun(true);
+                    // Langsung tandai selesai begitu tur dimulai,
+                    // agar F5/Refresh tidak membuatnya muncul lagi bak zombi.
+                    markTourCompleted(); 
+                }
             }, 800);
-            return () => clearTimeout(timer);
         }
+
+        return () => {
+            isMounted = false;
+            if (timer) clearTimeout(timer);
+        };
     }, [location.pathname]);
+
+    const markTourCompleted = async () => {
+        const user = getCurrentUser();
+        if (user && !user.has_completed_tour) {
+            user.has_completed_tour = true;
+            setAuthSession(getToken(), user);
+            try {
+                await apiFetch('/auth/complete-tour', { method: 'PUT' });
+            } catch (e) {
+                console.error("Failed to persist tour state:", e);
+            }
+        }
+    };
 
     // Jika pengguna pindah halaman saat tur sedang berjalan, batalkan tur secara halus
     useEffect(() => {
         if (run && location.pathname !== '/dashboard') {
             setRun(false);
+            markTourCompleted(); // Tandai selesai jika user kabur dari dashboard
         }
     }, [location.pathname, run]);
 
@@ -106,27 +139,25 @@ function TourGuide() {
         const handleReplay = () => {
             setTourKey(Date.now()); // Ubah key agar Joyride mereset stepIndex-nya ke 0
             setRun(true);
-            // FIX: Segera set kembali agar jika user refresh di tengah replay, tidak muncul otomatis
-            localStorage.setItem('tourCompleted', 'true');
         };
         window.addEventListener('replayTour', handleReplay);
         return () => window.removeEventListener('replayTour', handleReplay);
     }, []);
 
-    const handleJoyrideCallback = (data) => {
+    const handleJoyrideCallback = async (data) => {
         const { status, action, type } = data;
         const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
 
+        // Jika user sengaja menutup atau menyelesaikan tur
         if (finishedStatuses.includes(status) || action === ACTIONS.CLOSE || type === 'tour:end') {
             setRun(false);
-            // FIX: Pastikan status ditandai selesai secara permanen
-            localStorage.setItem('tourCompleted', 'true');
+            await markTourCompleted();
         }
     };
 
     // FIX: Buat komponen Tooltip kustom murni menggunakan class Bootstrap
     // Ini memastikan background, teks, dan tombol 100% mengikuti tema Light/Dark
-    const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, skipProps, tooltipProps, isLastStep }) => (
+    const CustomTooltip = ({ index, step, backProps, primaryProps, skipProps, tooltipProps, isLastStep }) => (
         <div {...tooltipProps} className="card border shadow-lg bg-body text-body" style={{ maxWidth: '400px', zIndex: 10000 }}>
             <div className="card-body p-4">
                 {step.content}

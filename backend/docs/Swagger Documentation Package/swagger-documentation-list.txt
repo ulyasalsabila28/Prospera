@@ -1,0 +1,91 @@
+Swagger documentation yang perlu ditambahkan
+
+to access, di terminal dalam folder backend, npm install > npm run dev > buka localhost:5000/docs
+
+1. Konfigurasi umum
+- info (title, version, description)
+- servers (base URL, misalnya http://localhost:5000)
+- components/securitySchemes/bearerAuth
+- components/schemas untuk request/response model:
+  - RegisterRequest
+  - LoginRequest
+  - AuthResponse
+  - User
+  - Product
+  - Category
+  - StoreSetting
+  - TransactionRequest
+  - TransactionSummary
+  - AnalyticsSummary
+  - ForecastResult
+  - LowStockItem
+  - SmartFeatureAnomaly
+  - ErrorResponse
+
+2. Security
+- JWT Bearer auth (Authorization: Bearer <token>)
+- Tandai semua endpoint yang butuh autentikasi
+- Tandai endpoint dengan RBAC:
+  - owner only
+  - owner | karyawan
+
+3. Endpoint dokumentasi
+
+Auth
+- POST /api/auth/register
+- POST /api/auth/login
+- GET /api/auth/users
+- POST /api/auth/users
+- DELETE /api/auth/users/{id}
+- DELETE /api/auth/delete
+- PUT /api/auth/change-password
+
+Products
+- GET /api/products
+- GET /api/products/{id}
+- POST /api/products
+- PUT /api/products/{id}
+- DELETE /api/products/{id}
+
+Transactions
+- POST /api/transactions/checkout
+- GET /api/transactions/history
+- GET /api/transactions/export
+- GET /api/transactions/summary
+
+Analytics
+- GET /api/analytics/summary
+- GET /api/analytics/profit
+- GET /api/analytics/top-product
+- GET /api/analytics/monthly
+- GET /api/analytics/loss-products
+- GET /api/analytics/summary/export/excel
+- GET /api/analytics/summary/export/csv
+
+Inventory
+- GET /api/inventory/low-stock
+
+Forecast
+- GET /api/forecast
+
+Categories
+- GET /api/categories
+- POST /api/categories
+- PUT /api/categories/{id}
+- DELETE /api/categories/{id}
+
+Store Settings
+- GET /api/store-settings
+- PUT /api/store-settings
+
+Smart Features
+- GET /api/smart-features/expiring
+- PUT /api/smart-features/apply-markdown
+- GET /api/smart-features/anomalies
+- PUT /api/smart-features/anomalies/resolve
+
+4. Tambahan dokumentasi penting
+- Global response schema untuk 401, 403, 404, 500
+- Contoh request body untuk register, login, createProduct, updateProduct, checkout, apply-markdown, resolve anomaly
+- Penjelasan query params atau request body bila ada filter / paging (jika diimplementasikan nanti)
+- Tag grouping per area: Auth, Products, Transactions, Analytics, Inventory, Forecast, Categories, Store Settings, Smart Features

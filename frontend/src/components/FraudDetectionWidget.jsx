@@ -319,16 +319,18 @@ function FraudDetectionWidget() {
                 </div>
             ) : (
                 <div 
-                    className="card shadow-sm border-start border-success border-4 card-hover-effect"
+                    className="card border-0 shadow-sm rounded-4 p-3 d-flex flex-row justify-content-between align-items-center card-hover-effect" 
                     style={{ cursor: 'pointer' }}
                     data-bs-toggle="modal" 
                     data-bs-target="#FraudModal"
                 >
-                    <div className="card-body">
-                        <h5 className="card-title text-success fw-bold mb-0">
-                            <i className="fas fa-shield-check me-2"></i>Fraud Detection Aktif
-                        </h5>
-                        <p className="text-muted small mt-2 mb-0">Klik untuk melihat riwayat audit.</p>
+                    <div>
+                        <div className="fw-bold text-body mb-1">Deteksi Anomali / Fraud</div>
+                        <div className="h5 fw-bold text-success m-0">Aman & Terkendali</div>
+                        <div className="text-muted small mt-1">Klik untuk melihat riwayat audit</div>
+                    </div>
+                    <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex justify-content-center align-items-center" style={{width: '45px', height: '45px'}}>
+                        <i className="fas fa-shield-alt fs-5"></i>
                     </div>
                 </div>
             )}

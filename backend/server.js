@@ -2,6 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
+const cookieParser = require('cookie-parser');
+const swaggerUi = require('swagger-ui-express');
 
 const { sequelize } = require('./models');
 const { apiLimiter } = require('./middleware/rateLimiter');
@@ -28,6 +31,11 @@ if (process.env.JWT_SECRET.length < 32) {
 
 const app = express();
 
+// FIX (V6.0): Reverse Proxy Suicide Prevention
+// Harus diset SEBELUM express-rate-limit agar IP terbaca sebagai IP Klien asli (via X-Forwarded-For)
+// bukan sebagai IP Cloudflare/Nginx Load Balancer tunggal.
+app.set('trust proxy', 1);
+
 // ===== LAPISAN KEAMANAN (Security Middleware Stack) =====
 
 // Layer 0: Request ID — Inject X-Request-Id ke setiap request untuk tracing & observability
@@ -49,17 +57,24 @@ app.use((req, res, next) => {
 // Layer 1: Helmet — Menyembunyikan identitas server & mencegah serangan injeksi header
 app.use(helmet());
 
-// Layer 2: CORS — Membatasi akses hanya dari origin yang diizinkan
+// Layer 1.5: Compression — Mengompresi response (Gzip/Brotli) untuk performa
+app.use(compression());
+
+// Layer 2: Cookie Parser — Mengekstrak HttpOnly cookies dari request
+app.use(cookieParser());
+
+// Layer 3: CORS — Membatasi akses hanya dari origin yang diizinkan
 // FIX (CRIT-04): Tambahkan 'X-Idempotency-Key' ke allowedHeaders.
 // Tanpa ini, browser CORS preflight memblokir header kustom sebelum mencapai
 // controller, sehingga sistem anti-transaksi-duplikat di transactionController.js
 // (Line 35: req.headers['x-idempotency-key']) tidak pernah berfungsi.
 // X-Request-ID ditambahkan juga agar frontend bisa membaca requestId dari error response.
 app.use(cors({
-    origin: CORS_ORIGIN,
+    origin: typeof CORS_ORIGIN === 'string' ? [CORS_ORIGIN, 'http://127.0.0.1:5173'] : CORS_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key', 'X-Request-ID'],
-    exposedHeaders: ['X-Request-ID'] // Izinkan frontend membaca header ini dari response
+    exposedHeaders: ['X-Request-ID'], // Izinkan frontend membaca header ini dari response
+    credentials: true // FIX (V4.0): Wajib aktif agar frontend bisa mengirim dan menerima HttpOnly Cookie
 }));
 
 // Layer 3: Rate Limiter Global — Anti DDoS untuk seluruh endpoint API
@@ -67,6 +82,10 @@ app.use('/api', apiLimiter);
 
 // Layer 4: Body Parser — Membatasi ukuran payload untuk mencegah serangan payload besar
 app.use(express.json({ limit: BODY_SIZE_LIMIT }));
+
+// Layer 5: Passport — Inisialisasi strategi autentikasi
+const passport = require('./config/passport');
+app.use(passport.initialize());
 
 // ===== RUTE APLIKASI =====
 
@@ -96,6 +115,10 @@ app.use('/api/smart-features', smartFeatureRoutes);
 app.get('/', (req, res) => {
     res.status(200).json({ message: "Server Backend Prospera berjalan dengan baik." });
 });
+
+// Swagger UI untuk dokumentasi OpenAPI
+const swaggerSpec = require('./docs/Swagger Documentation Package/swagger.json');
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // ===== PENANGANAN ERROR =====
 

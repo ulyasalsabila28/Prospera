@@ -6,16 +6,23 @@
 	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+	<!-- Security Meta Tags -->
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; connect-src 'self' ws: wss: http: https:;">
+
 	<!-- SEO Meta Tags -->
 	<meta name="description" content="Prospera — Sistem manajemen toko pintar dengan POS, analitik bisnis, dan prediksi stok berbasis AI. Solusi lengkap untuk UMKM Indonesia." />
 	<meta name="keywords" content="POS, kasir, manajemen toko, analitik bisnis, UMKM, Prospera" />
 	<meta name="author" content="Prospera Team" />
-	<meta name="theme-color" content="#1E3A8A" />
+	<meta name="theme-color" content="#0d6efd" />
+
+	<!-- Preload Injector for LCP -->
+	<link rel="preload" as="image" href="/hero-image.webp" fetchpriority="high" />
 
 	<!-- Open Graph -->
 	<meta property="og:title" content="Prospera — Smart POS & Business Analytics" />
 	<meta property="og:description" content="Sistem manajemen toko pintar untuk UMKM Indonesia." />
 	<meta property="og:type" content="website" />
+	<meta property="og:image" content="/hero-image.webp" />
 
 	<title>Prospera — Smart POS & Business Analytics</title>
 </head>

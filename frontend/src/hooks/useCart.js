@@ -12,6 +12,7 @@
 import { useState, useMemo } from "react";
 import { apiFetch, formatError } from "../utils/api";
 import { formatDatetime } from "../utils/format";
+import { useToast } from "../contexts/ToastContext";
 import useDebounce from "./useDebounce";
 
 export function useCart(products, fetchProducts, fetchHistory) {
@@ -29,6 +30,7 @@ export function useCart(products, fetchProducts, fetchHistory) {
     const [lastTransaction, setLastTransaction] = useState(null);
     const [saving, setSaving] = useState(false);
     const [overtimeModal, setOvertimeModal] = useState({ isOpen: false, errorMsg: '' });
+    const { showToast } = useToast();
 
     // Pencarian produk
     const [searchTerm, setSearchTerm] = useState("");
@@ -149,6 +151,7 @@ export function useCart(products, fetchProducts, fetchHistory) {
         if (cartItems.length === 0) {
             setMessage("Keranjang masih kosong. Yuk, tambahkan produk dulu sebelum menyimpan transaksi!");
             setMessageType("warning");
+            showToast("Keranjang masih kosong!", "warning");
             return;
         }
         setSaving(true);
@@ -188,6 +191,7 @@ export function useCart(products, fetchProducts, fetchHistory) {
 
             setMessage(`Transaksi berhasil disimpan! Total belanja: Rp${response.total_belanja}`);
             setMessageType("success");
+            showToast(`Transaksi berhasil disimpan! (Rp${response.total_belanja})`, "success");
             setCartItems([]);
             fetchProducts();
             fetchHistory();
@@ -198,6 +202,7 @@ export function useCart(products, fetchProducts, fetchHistory) {
             }
             setMessageType("danger");
             setMessage(formatError(error));
+            showToast(formatError(error), "danger");
         } finally {
             setSaving(false);
         }

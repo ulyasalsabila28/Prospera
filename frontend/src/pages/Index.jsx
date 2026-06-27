@@ -203,9 +203,10 @@ function Index() {
                         </Link>
                     </div>
 
-                    <div className="mb-3" data-tour="tour-fraud">
+                    <div className="mb-3">
                         <span className="badge bg-danger bg-opacity-75 rounded-pill px-3 py-2 mb-2">Risk Management</span>
-                        <Link to="/smart-predict" className="text-decoration-none text-body">
+                        <div data-tour="tour-fraud">
+                            <Link to="/smart-predict" className="text-decoration-none text-body">
                             {hasOpenAnomalies ? (
                                 <div className="card border-0 shadow-sm rounded-4 p-3 mb-3 d-flex flex-row justify-content-between align-items-center card-hover-effect">
                                     <div>
@@ -222,21 +223,22 @@ function Index() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="card border-start border-success border-4 shadow-sm rounded-4 p-3 mb-3 card-hover-effect">
-                                    <div className="d-flex align-items-center">
-                                        <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex justify-content-center align-items-center me-3" style={{width: '45px', height: '45px'}}>
-                                            <i className="fas fa-shield-check fs-5"></i>
-                                        </div>
-                                        <div>
-                                            <div className="fw-bold text-success mb-1">Fraud Detection Aktif</div>
-                                            <div className="text-muted small m-0">Klik untuk melihat riwayat audit</div>
-                                        </div>
+                                <div className="card border-0 shadow-sm rounded-4 p-3 mb-3 d-flex flex-row justify-content-between align-items-center card-hover-effect">
+                                    <div>
+                                        <div className="fw-bold text-body mb-1">Deteksi Anomali / Fraud</div>
+                                        <div className="h5 fw-bold text-success m-0">Aman & Terkendali</div>
+                                        <div className="text-muted small mt-1">Klik untuk melihat riwayat audit</div>
+                                    </div>
+                                    <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex justify-content-center align-items-center" style={{width: '45px', height: '45px'}}>
+                                        <i className="fas fa-shield-alt fs-5"></i>
                                     </div>
                                 </div>
                             )}
-                        </Link>
-
-                        <SmartExpiryWidget isDashboard={true} />
+                            </Link>
+                        </div>
+                        <div data-tour="tour-expiry" className="mt-2">
+                            <SmartExpiryWidget isDashboard={true} />
+                        </div>
                     </div>
 
                     <div className="mb-3">
@@ -279,7 +281,7 @@ function Index() {
                             <div style={{ maxHeight: "290px", overflowY: "auto", paddingRight: "5px" }}>
                                 <div className="table-responsive">
                                     <table className="table table-simple align-middle mb-0">
-                                        <thead style={{ position: "sticky", top: 0, backgroundColor: "#fff", zIndex: 1 }}>
+                                        <thead style={{ position: "sticky", top: 0, zIndex: 1 }} className="bg-body">
                                             <tr>
                                                 <th>Produk</th>
                                                 <th>Unit</th>
@@ -288,7 +290,7 @@ function Index() {
                                             </tr>
                                         </thead>
                                         <tbody className="border-top-0">
-                                            {sortedProducts.length > 0 ? sortedProducts.slice(0, 4).map((product) => (
+                                            {sortedProducts.length > 0 ? sortedProducts.map((product) => (
                                                 <tr key={product.id} className="align-middle">
                                                     <td className="fw-bold text-body">{product.name}</td>
                                                     <td>{product.volume.toLocaleString('id-ID')} unit</td>
@@ -335,7 +337,7 @@ function Index() {
 
                     <div className="mt-auto" data-tour="tour-ai-insight">
                         <Link to="/smart-predict" className="text-decoration-none text-body">
-                            <div className="clean-card shadow-sm bg-body-tertiary border-0 card-hover-effect">
+                            <div className="card shadow-sm rounded-4 p-4 border-0 card-hover-effect">
                                 <div className="d-flex justify-content-between align-items-center mb-3">
                                     <h6 className="fw-bold m-0"><i className="fas fa-robot text-primary me-2" />AI Insight</h6>
                                     <div className="d-flex align-items-center text-primary small fw-bold">

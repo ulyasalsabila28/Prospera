@@ -28,6 +28,18 @@ export const getTransactionTypeLabel = (transaction) => {
 export const printReceipt = (transactionData) => {
     if (!transactionData) return;
 
+    // Normalisasi struktur data karena bisa dipanggil dari Cart (state lokal) atau History (API backend)
+    const isFromHistory = !!transactionData.TransactionDetails;
+    const items = isFromHistory ? transactionData.TransactionDetails : transactionData.items;
+    
+    // Perbaikan: import formatDatetime di awal atau tidak perlu jika history sudah string, tapi lebih aman dicek.
+    const date = isFromHistory 
+        ? new Date(transactionData.transaction_datetime).toLocaleString('id-ID')
+        : transactionData.date;
+        
+    const total = isFromHistory ? transactionData.total_amount : transactionData.total;
+    const typeLabel = isFromHistory ? getTransactionTypeLabel(transactionData) : (transactionData.type === 'sell' ? 'Penjualan' : 'Restock');
+
     const printWindow = window.open('', '', 'height=600,width=400');
 
     // UX FIX (F-S14): Tangani pop-up blocker browser
@@ -77,25 +89,31 @@ export const printReceipt = (transactionData) => {
                 </div>
                 <div class="border-dashed"></div>
                 <div>
-                    <div class="d-flex"><span>Tgl:</span> <span>${escapeHtml(transactionData.date)}</span></div>
-                    <div class="d-flex"><span>Tipe:</span> <span>${escapeHtml(transactionData.type === 'sell' ? 'Penjualan' : 'Restock')}</span></div>
+                    <div class="d-flex"><span>Tgl:</span> <span>${escapeHtml(date)}</span></div>
+                    <div class="d-flex"><span>Tipe:</span> <span>${escapeHtml(typeLabel)}</span></div>
                 </div>
                 <div class="border-dashed"></div>
                 <div>
-                    ${transactionData.items.map(item => `
+                    ${items.map(item => {
+                        const name = isFromHistory ? item.Product?.product_name : item.product_name;
+                        const qty = item.quantity;
+                        const price = isFromHistory ? item.selling_price : item.hargaJual;
+                        const subtotal = isFromHistory ? item.sub_total : (qty * price);
+                        return `
                         <div style="margin-bottom: 8px;">
-                            <div class="fw-bold">${escapeHtml(item.product_name)}</div>
+                            <div class="fw-bold">${escapeHtml(name || '-')}</div>
                             <div class="d-flex">
-                                <span>${escapeHtml(item.quantity)} x Rp${escapeHtml(item.hargaJual)}</span>
-                                <span>Rp${escapeHtml(item.quantity * item.hargaJual)}</span>
+                                <span>${escapeHtml(qty)} x Rp${escapeHtml(price)}</span>
+                                <span>Rp${escapeHtml(subtotal)}</span>
                             </div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
                 <div class="border-dashed"></div>
                 <div class="d-flex fw-bold" style="font-size: 14px;">
                     <span>TOTAL</span>
-                    <span>Rp${escapeHtml(transactionData.total)}</span>
+                    <span>Rp${escapeHtml(total)}</span>
                 </div>
                 <div class="border-dashed"></div>
                 <div class="text-center" style="margin-top: 15px;">

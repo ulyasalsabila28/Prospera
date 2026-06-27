@@ -175,22 +175,22 @@ function BiAnalytics() {
                         </div>
                         
                         {/* KARTU TOTAL PENDAPATAN (Sekarang Statis / Non-clickable) */}
-                        <div className="stat-card bi-card shadow-sm mb-2 bg-body rounded border-0">
+                        <div className="card border-0 shadow-sm rounded-4 p-3 mb-3">
                             <div className="d-flex justify-content-between align-items-center">
                                 <div>
                                     <small className="text-muted">Total Pendapatan</small>
                                     <div className="h4 fw-bold text-body mb-0">{formatRupiah(ringkasan.penjualan)}</div>
                                 </div>
                                 {/* Ikon dompet sebagai dekorasi pengganti panah */}
-                                <div className="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style={{ width: '35px', height: '35px' }}>
-                                    <i className="fas fa-wallet text-success" style={{ fontSize: '14px' }}></i>
+                                <div className="bg-success bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center" style={{ width: '45px', height: '45px' }}>
+                                    <i className="fas fa-wallet text-success" style={{ fontSize: '18px' }}></i>
                                 </div>
                             </div>
                         </div>
                         
                         {/* KARTU TRANSAKSI */}
                         <div 
-                            className="stat-card bi-card shadow-sm mb-2 bg-body rounded border-0"
+                            className="card border-0 shadow-sm rounded-4 p-3 mb-3"
                             style={{ cursor: 'pointer', transition: '0.2s' }}
                             onClick={() => openModal('transaction')}
                             onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
@@ -201,7 +201,7 @@ function BiAnalytics() {
                                     <small className="text-muted">Jumlah Transaksi</small>
                                     <div className="h4 fw-bold text-body mb-0">{ringkasan.transaksi.toLocaleString('id-ID')}</div>
                                 </div>
-                                <i className="fas fa-chevron-right text-muted opacity-50"></i>
+                                <i className="fas fa-chevron-right text-muted"></i>
                             </div>
                         </div>
 
@@ -227,12 +227,10 @@ function BiAnalytics() {
                         {/* L2-01: "Defisit Markdown" — re-label dari "Kerugian (Jual Rugi)" */}
                         {/* L2-02: Orange/warning (keputusan bisnis disengaja), L2-05: hijau jika Rp 0 */}
                         <div 
-                            className="stat-card bi-card shadow-sm mb-2 rounded border-0"
+                            className="card border-0 shadow-sm rounded-4 p-3 mb-3"
                             style={{ 
                                 cursor: 'pointer', 
-                                transition: '0.2s',
-                                borderLeft: ringkasan.rugi === 0 ? '3px solid #22c55e' : '3px solid #f59e0b',
-                                backgroundColor: ringkasan.rugi === 0 ? '#f0fdf4' : 'var(--bs-body-bg)'
+                                transition: '0.2s'
                             }}
                             onClick={() => openModal('loss')}
                             onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
@@ -274,12 +272,10 @@ function BiAnalytics() {
                         {/* L2-02: Kerugian Kedaluwarsa — MERAH (uang hangus total) */}
                         {/* L2-05: Hijau jika Rp 0, L2-03: % omzet, L2-04: sudah ada badge periode di atas */}
                         <div 
-                            className="stat-card bi-card shadow-sm mb-2 rounded border-0"
+                            className="card border-0 shadow-sm rounded-4 p-3 mb-3"
                             style={{ 
                                 cursor: 'pointer', 
-                                transition: '0.2s',
-                                borderLeft: ringkasan.spoilage === 0 ? '3px solid #22c55e' : '3px solid #dc2626',
-                                backgroundColor: ringkasan.spoilage === 0 ? '#f0fdf4' : 'var(--bs-body-bg)'
+                                transition: '0.2s'
                             }}
                             onClick={() => openModal('spoilage')}
                             onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
@@ -317,7 +313,7 @@ function BiAnalytics() {
                         
                         {/* KARTU SUPER: LAPORAN LABA */}
                         <div 
-                            className="stat-card bi-card shadow-sm mb-2 bg-body rounded border-0"
+                            className="card border-0 shadow-sm rounded-4 p-3 mb-3"
                             style={{ cursor: 'pointer', transition: '0.2s' }}
                             onClick={() => openModal('pnl')}
                             onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
@@ -348,7 +344,7 @@ function BiAnalytics() {
                 </div>
 
                 <div className="col-lg-8 col-md-7">
-                    <ul className="nav nav-pills mb-4 bg-body p-2 rounded shadow-sm d-flex flex-wrap gap-2 border-0">
+                    <ul className="nav nav-pills mb-4 card border-0 p-2 rounded-4 shadow-sm d-flex flex-row flex-wrap gap-2">
                         <li className="nav-item">
                             <button className={`nav-link ${view === 'list' ? 'active' : ''}`} type="button" onClick={() => setView('list')}>
                                 <i className="fas fa-boxes me-2" />Performa Penjualan
@@ -362,11 +358,11 @@ function BiAnalytics() {
                     </ul>
 
                     {view === 'list' && (
-                        <div className="card border-0 shadow-sm p-4 bg-body rounded">
+                        <div className="card border-0 shadow-sm p-4 rounded-4">
                             <h5 className="fw-bold mb-4"><span className="badge bg-success me-2">Top</span>Performa Penjualan Barang</h5>
                             <div className="table-responsive" style={{ maxHeight: "390px", overflowY: "auto", paddingRight: "5px" }}>
                                 <table className="table table-borderless align-middle mb-0">
-                                    <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+                                    <thead style={{ position: "sticky", top: 0, zIndex: 1, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                                         <tr className="small text-muted text-uppercase">
                                             <th>Nama Barang</th>
                                             <th className="text-center">Volume</th>
@@ -404,7 +400,7 @@ function BiAnalytics() {
                     )}
 
                     {view === 'chart' && (
-                        <div className="card border-0 shadow-sm p-4 bg-body rounded">
+                        <div className="card border-0 shadow-sm p-4 rounded-4">
                             <div className="mb-4">
                                 <h5 className="fw-bold"><span className="badge bg-info me-2">Tren</span>Grafik Penjualan & Laba</h5>
                                 <small className="text-muted">Menampilkan perbandingan total omzet dan untung bersih dari bulan ke bulan.</small>

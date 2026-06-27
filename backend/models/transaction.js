@@ -38,7 +38,10 @@ module.exports = (sequelize, DataTypes) => {
     }
   }, {
     tableName: 'Transactions',
-    timestamps: false,
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: false,
+    paranoid: true, // Soft delete (deletedAt)
     // FIX (HIGH-09): Index pada kolom FK dan filter paling sering dipakai.
     // Tanpa index ini, setiap query history melakukan full table scan.
     indexes: [

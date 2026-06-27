@@ -12,10 +12,12 @@
  */
 
 import { useState, useMemo } from "react";
-import { apiFetch, apiFetchBlob, formatError, API_BASE_URL } from "../utils/api";
+import { apiFetch, apiFetchBlob, formatError } from "../utils/api";
 import { getTransactionTypeLabel } from "../utils/transactionHelpers";
+import { useToast } from "../contexts/ToastContext";
 
 export function useHistory() {
+    const { showToast } = useToast();
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
     const [fetchError, setFetchError] = useState(null);
@@ -122,20 +124,65 @@ export function useHistory() {
                 url += `?${queryParams.join('&')}`;
             }
 
-            // FIX (CRITICAL-FE-01 + CRITICAL-FE-02): Gunakan apiFetchBlob terpusat
-            // dari api.js (bukan raw fetch). apiFetchBlob membaca token dari
-            // sessionStorage dan menangani 401/403 secara konsisten.
             const blob = await apiFetchBlob(url);
             const downloadUrl = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = downloadUrl;
-            link.setAttribute('download', `Laporan_Transaksi_${start || 'All'}_to_${end || 'All'}.xlsx`);
+            
+            const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+            link.setAttribute('download', `Laporan_Transaksi_${start || 'All'}_to_${end || 'All'}_${timeStr}.xlsx`);
+            
+            link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
-            link.parentNode.removeChild(link);
-            // Cleanup: bebaskan object URL dari memory setelah dipakai
-            window.URL.revokeObjectURL(downloadUrl);
+            
+            // Tahan elemen <a> dan Blob URL selama 60 detik untuk mencegah race condition 
+            setTimeout(() => {
+                if (document.body.contains(link)) {
+                    link.parentNode.removeChild(link);
+                }
+                window.URL.revokeObjectURL(downloadUrl);
+            }, 60000);
         } catch (error) {
+            console.error('Export Excel Error:', error);
+            showToast(`Gagal mengekspor data: ${formatError(error)}`, 'danger');
+            setFetchError(formatError(error));
+        }
+    };
+
+    const handleExportCsv = async (start, end) => {
+        try {
+            let url = "/transactions/export";
+            let queryParams = ['format=csv'];
+            if (start && end) {
+                queryParams.push(`start=${start}`);
+                queryParams.push(`end=${end}`);
+            }
+
+            url += `?${queryParams.join('&')}`;
+
+            const blob = await apiFetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            
+            const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+            link.setAttribute('download', `Laporan_Transaksi_${start || 'All'}_to_${end || 'All'}_${timeStr}.csv`);
+            
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            
+            // Tahan elemen <a> dan Blob URL selama 60 detik untuk mencegah race condition 
+            setTimeout(() => {
+                if (document.body.contains(link)) {
+                    link.parentNode.removeChild(link);
+                }
+                window.URL.revokeObjectURL(downloadUrl);
+            }, 60000);
+        } catch (error) {
+            console.error('Export CSV Error:', error);
+            showToast(`Gagal mengekspor data: ${formatError(error)}`, 'danger');
             setFetchError(formatError(error));
         }
     };
@@ -162,7 +209,7 @@ export function useHistory() {
         selectedTransaction, showTransactionModal,
         handleDateFilterChange, applyCustomDate,
         openTransactionModal, closeTransactionModal,
-        filteredHistory, handleExportExcel,
+        filteredHistory, handleExportExcel, handleExportCsv,
         showReportModal, setShowReportModal
     };
 }

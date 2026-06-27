@@ -52,6 +52,21 @@ module.exports = (sequelize, DataTypes) => {
     overtime_unlocked_until: {
       type: DataTypes.DATE,
       allowNull: true
+    },
+    has_completed_tour: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
+    phone_number: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      unique: true
+    },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true
     }
   }, {
     tableName: 'Users',

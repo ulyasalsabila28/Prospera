@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { apiFetch, formatError } from "../utils/api";
+import { useToast } from "../contexts/ToastContext";
+import { useConfirm } from "../contexts/ConfirmContext";
 
 // Regex standar industri — selaras dengan backend
 import { EMAIL_REGEX } from "../utils/validators";
 
 export default function UserManagement() {
     const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [message, setMessage] = useState("");
-    const [messageType, setMessageType] = useState("success");
+    const [loading, setLoading] = useState(false);
+    const { showToast } = useToast();
+    const { showConfirm } = useConfirm();
 
     // Form state
     const [showForm, setShowForm] = useState(false);
@@ -17,8 +20,18 @@ export default function UserManagement() {
     const [password, setPassword] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Delete confirmation
-    const [deleteTarget, setDeleteTarget] = useState(null);
+    // Form state Edit
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+    const [editUsername, setEditUsername] = useState("");
+    const [editEmail, setEditEmail] = useState("");
+
+    // Form state Reset Password
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [resetPasswordValue, setResetPasswordValue] = useState("");
+    const [confirmResetPasswordValue, setConfirmResetPasswordValue] = useState("");
+    const [showResetPassword, setShowResetPassword] = useState(false);
+    const [showConfirmResetPassword, setShowConfirmResetPassword] = useState(false);
 
     const fetchUsers = async () => {
         try {
@@ -26,8 +39,7 @@ export default function UserManagement() {
             const data = await apiFetch("/auth/users");
             setUsers(Array.isArray(data) ? data : []);
         } catch (err) {
-            setMessage(formatError(err));
-            setMessageType("error");
+            showToast(formatError(err), 'danger');
         } finally {
             setLoading(false);
         }
@@ -36,22 +48,17 @@ export default function UserManagement() {
     useEffect(() => { fetchUsers(); }, []);
 
     const handleCreateUser = async () => {
-        setMessage("");
-
         // Validasi client-side
         if (!username.trim()) {
-            setMessage("Username wajib diisi.");
-            setMessageType("error");
+            showToast("Username wajib diisi.", 'warning');
             return;
         }
         if (!email.trim() || !EMAIL_REGEX.test(email.trim())) {
-            setMessage("Masukkan email dengan format yang valid.");
-            setMessageType("error");
+            showToast("Masukkan email dengan format yang valid.", 'warning');
             return;
         }
         if (!password || password.length < 6) {
-            setMessage("Password minimal 6 karakter.");
-            setMessageType("error");
+            showToast("Password minimal 6 karakter.", 'warning');
             return;
         }
 
@@ -66,16 +73,14 @@ export default function UserManagement() {
                     role: "karyawan"
                 })
             });
-            setMessage(data.message || "Akun Karyawan berhasil dibuat.");
-            setMessageType("success");
+            showToast(data.message || "Akun Karyawan berhasil dibuat.", 'success');
             setUsername("");
             setEmail("");
             setPassword("");
             setShowForm(false);
             fetchUsers();
         } catch (err) {
-            setMessage(formatError(err));
-            setMessageType("error");
+            showToast(formatError(err), 'danger');
         } finally {
             setIsSubmitting(false);
         }
@@ -84,14 +89,76 @@ export default function UserManagement() {
     const handleDeleteUser = async (userId) => {
         try {
             const data = await apiFetch(`/auth/users/${userId}`, { method: "DELETE" });
-            setMessage(data.message || "Akun berhasil dihapus.");
-            setMessageType("success");
-            setDeleteTarget(null);
+            showToast(data.message || "Akun berhasil dihapus.", 'success');
             fetchUsers();
         } catch (err) {
-            setMessage(formatError(err));
-            setMessageType("error");
-            setDeleteTarget(null);
+            showToast(formatError(err), 'danger');
+        }
+    };
+
+    const handleOpenEdit = (user) => {
+        setEditingUser(user);
+        setEditUsername(user.username);
+        setEditEmail(user.email);
+        setShowEditModal(true);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editUsername.trim() || !editEmail.trim() || !EMAIL_REGEX.test(editEmail.trim())) {
+            showToast("Data tidak valid. Periksa kembali input Anda.", "warning");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const data = await apiFetch(`/auth/users/${editingUser.user_id}`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    username: editUsername.trim(),
+                    email: editEmail.trim().toLowerCase()
+                })
+            });
+            showToast(data.message || "Akun berhasil diperbarui.", "success");
+            setShowEditModal(false);
+            fetchUsers();
+        } catch (err) {
+            showToast(formatError(err), "danger");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleOpenReset = (user) => {
+        setEditingUser(user);
+        setResetPasswordValue("");
+        setConfirmResetPasswordValue("");
+        setShowResetPassword(false);
+        setShowConfirmResetPassword(false);
+        setShowResetModal(true);
+    };
+
+    const handleSaveResetPassword = async () => {
+        if (!resetPasswordValue || resetPasswordValue.length < 6) {
+            showToast("Password minimal 6 karakter.", "warning");
+            return;
+        }
+        if (resetPasswordValue !== confirmResetPasswordValue) {
+            showToast("Konfirmasi password tidak sesuai.", "warning");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const data = await apiFetch(`/auth/users/${editingUser.user_id}/reset-password`, {
+                method: "PUT",
+                body: JSON.stringify({ password: resetPasswordValue })
+            });
+            showToast(data.message || "Password berhasil direset.", "success");
+            setShowResetModal(false);
+        } catch (err) {
+            showToast(formatError(err), "danger");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -104,21 +171,12 @@ export default function UserManagement() {
                 <button 
                     className="btn btn-primary px-4 py-2 fw-semibold"
                     style={{ borderRadius: '10px' }}
-                    onClick={() => { setShowForm(!showForm); setMessage(""); }}
+                    onClick={() => setShowForm(!showForm)}
                 >
                     <i className={`fas ${showForm ? 'fa-times' : 'fa-user-plus'} me-2`}></i>
                     {showForm ? 'Batal' : 'Tambah Karyawan'}
                 </button>
             </div>
-
-            {/* Alert Message */}
-            {message && (
-                <div className={`alert ${messageType === 'success' ? 'alert-success' : 'alert-danger'} py-2 shadow-sm`} 
-                     role="alert" style={{ borderRadius: '10px' }}>
-                    <i className={`fas ${messageType === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2`}></i>
-                    {message}
-                </div>
-            )}
 
             {/* Form Tambah Karyawan */}
             {showForm && (
@@ -178,17 +236,18 @@ export default function UserManagement() {
                         <table className="table table-simple align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
+                                    <th>No.</th>
                                     <th>Username</th>
                                     <th>Email</th>
                                     <th>Role</th>
+                                    <th>Status</th>
                                     <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map(user => (
+                                {users.map((user, index) => (
                                     <tr key={user.user_id}>
-                                        <td className="text-muted">#{user.user_id}</td>
+                                        <td className="text-muted">{index + 1}</td>
                                         <td className="fw-bold">{user.username}</td>
                                         <td>{user.email}</td>
                                         <td>
@@ -198,14 +257,48 @@ export default function UserManagement() {
                                             </span>
                                         </td>
                                         <td>
+                                            {user.is_active === false ? (
+                                                <span className="badge bg-secondary" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '8px' }}>Nonaktif</span>
+                                            ) : (
+                                                <span className="badge bg-success" style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '8px' }}>Aktif</span>
+                                            )}
+                                        </td>
+                                        <td>
                                             {user.role === 'karyawan' ? (
-                                                <button 
-                                                    className="btn btn-outline-danger btn-sm px-3"
-                                                    style={{ borderRadius: '8px' }}
-                                                    onClick={() => setDeleteTarget(user)}
-                                                >
-                                                    <i className="fas fa-trash-alt me-1"></i>Hapus
-                                                </button>
+                                                <div className="d-flex gap-2">
+                                                    <button 
+                                                        className="btn btn-outline-warning btn-sm px-3"
+                                                        style={{ borderRadius: '8px' }}
+                                                        onClick={() => handleOpenEdit(user)}
+                                                        disabled={!user.is_active}
+                                                    >
+                                                        <i className="fas fa-edit me-1"></i>Edit
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-outline-info btn-sm px-3"
+                                                        style={{ borderRadius: '8px' }}
+                                                        onClick={() => handleOpenReset(user)}
+                                                        disabled={!user.is_active}
+                                                    >
+                                                        <i className="fas fa-key me-1"></i>Reset Password
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-outline-danger btn-sm px-3"
+                                                        style={{ borderRadius: '8px' }}
+                                                        onClick={() => {
+                                                            showConfirm({
+                                                                title: 'Nonaktifkan Akun Karyawan?',
+                                                                message: `Anda akan menonaktifkan akun "${user.username}" (${user.email}).`,
+                                                                isDanger: true,
+                                                                confirmText: 'Ya, Nonaktifkan',
+                                                                onConfirm: () => handleDeleteUser(user.user_id)
+                                                            });
+                                                        }}
+                                                        disabled={!user.is_active}
+                                                    >
+                                                        <i className="fas fa-trash-alt me-1"></i>Nonaktifkan
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 <span className="text-muted small">—</span>
                                             )}
@@ -218,34 +311,124 @@ export default function UserManagement() {
                 )}
             </div>
 
-            {/* Modal Konfirmasi Hapus */}
-            {deleteTarget && (
-                <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-                    <div className="modal-dialog modal-dialog-centered">
-                        <div className="modal-content shadow-lg border-0" style={{ borderRadius: '12px' }}>
-                            <div className="modal-body text-center py-4">
-                                <i className="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-                                <h5 className="fw-bold">Hapus Akun Karyawan?</h5>
-                                <p className="text-muted mb-0">
-                                    Anda akan menghapus akun <strong>"{deleteTarget.username}"</strong> ({deleteTarget.email}).
-                                    <br />Aksi ini tidak dapat dibatalkan.
-                                </p>
-                            </div>
-                            <div className="modal-footer border-0 justify-content-center pt-0 pb-4">
-                                <button className="btn btn-light px-4 py-2 me-2" 
-                                    onClick={() => setDeleteTarget(null)}
-                                    style={{ borderRadius: '8px', fontWeight: '500' }}>
-                                    Batal
-                                </button>
-                                <button className="btn btn-danger px-4 py-2" 
-                                    onClick={() => handleDeleteUser(deleteTarget.user_id)}
-                                    style={{ borderRadius: '8px', fontWeight: '500' }}>
-                                    Ya, Hapus
-                                </button>
+            {/* Modal Edit Karyawan */}
+            {showEditModal && (
+                <>
+                    <div className="modal-backdrop fade show" style={{ zIndex: 1040 }}></div>
+                    <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex: 1050 }}>
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
+                                <div className="modal-header border-bottom-0 pb-0">
+                                    <h5 className="modal-title fw-bold">Edit Karyawan</h5>
+                                    <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="form-label text-muted small fw-bold">Username</label>
+                                        <input 
+                                            className="form-control" 
+                                            value={editUsername}
+                                            onChange={(e) => setEditUsername(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label text-muted small fw-bold">Email</label>
+                                        <input 
+                                            className="form-control" 
+                                            type="email" 
+                                            value={editEmail}
+                                            onChange={(e) => setEditEmail(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="modal-footer border-top-0 pt-0">
+                                    <button className="btn btn-light" onClick={() => setShowEditModal(false)}>Batal</button>
+                                    <button 
+                                        className="btn btn-primary px-4" 
+                                        onClick={handleSaveEdit}
+                                        disabled={isSubmitting}
+                                    >
+                                        {isSubmitting ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </>
+            )}
+
+            {/* Modal Reset Password */}
+            {showResetModal && (
+                <>
+                    <div className="modal-backdrop fade show" style={{ zIndex: 1040 }}></div>
+                    <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex: 1050 }}>
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px' }}>
+                                <div className="modal-header border-bottom-0 pb-0">
+                                    <h5 className="modal-title fw-bold">Reset Password</h5>
+                                    <button type="button" className="btn-close" onClick={() => setShowResetModal(false)}></button>
+                                </div>
+                                <div className="modal-body">
+                                    <p className="text-muted small mb-3">
+                                        Masukkan password baru untuk akun <strong>{editingUser?.username}</strong>.
+                                    </p>
+                                    <div className="mb-3 position-relative">
+                                        <label className="form-label text-muted small fw-bold">Password Baru</label>
+                                        <div className="input-group">
+                                            <input 
+                                                className="form-control" 
+                                                type={showResetPassword ? "text" : "password"}
+                                                placeholder="Minimal 6 karakter"
+                                                value={resetPasswordValue}
+                                                onChange={(e) => setResetPasswordValue(e.target.value)}
+                                                style={{ borderRight: 'none' }}
+                                            />
+                                            <button 
+                                                className="btn btn-outline-secondary bg-white border-start-0" 
+                                                type="button"
+                                                style={{ borderColor: '#dee2e6' }}
+                                                onClick={() => setShowResetPassword(!showResetPassword)}
+                                            >
+                                                {showResetPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="mb-3 position-relative">
+                                        <label className="form-label text-muted small fw-bold">Konfirmasi Password Baru</label>
+                                        <div className="input-group">
+                                            <input 
+                                                className="form-control" 
+                                                type={showConfirmResetPassword ? "text" : "password"}
+                                                placeholder="Ulangi password baru"
+                                                value={confirmResetPasswordValue}
+                                                onChange={(e) => setConfirmResetPasswordValue(e.target.value)}
+                                                style={{ borderRight: 'none' }}
+                                            />
+                                            <button 
+                                                className="btn btn-outline-secondary bg-white border-start-0" 
+                                                type="button"
+                                                style={{ borderColor: '#dee2e6' }}
+                                                onClick={() => setShowConfirmResetPassword(!showConfirmResetPassword)}
+                                            >
+                                                {showConfirmResetPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="modal-footer border-top-0 pt-0">
+                                    <button className="btn btn-light" onClick={() => setShowResetModal(false)}>Batal</button>
+                                    <button 
+                                        className="btn btn-primary px-4" 
+                                        onClick={handleSaveResetPassword}
+                                        disabled={isSubmitting || resetPasswordValue.length < 6 || resetPasswordValue !== confirmResetPasswordValue}
+                                    >
+                                        {isSubmitting ? 'Menyimpan...' : 'Simpan Password'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
             )}
         </>
     );

@@ -19,7 +19,7 @@ import { formatDatetime } from '../utils/format';
 function PnlContent({ ringkasan }) {
     return (
         <div className="p-4 bg-body">
-            <div className="mb-4 p-3 rounded" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <div className="mb-4 p-3 rounded bg-body-secondary border">
                 <span className="d-block text-muted mb-1" style={{fontSize: "14px"}}>Total Pendapatan Kotor (Omzet)</span>
                 <span className="fw-bold text-body" style={{fontSize: "20px"}}>{formatRupiah(ringkasan.penjualan)}</span>
             </div>
@@ -268,7 +268,7 @@ export default function BiAnalyticsModal({ modalConfig, closeModal, data, ringka
                             <TableContent type={modalConfig.type} data={data} />
                         )}
                     </div>
-                    <div className="modal-footer bg-light border-0">
+                    <div className="modal-footer bg-body border-0">
                         <button type="button" className="btn btn-secondary" onClick={closeModal}>Tutup</button>
                     </div>
                 </div>

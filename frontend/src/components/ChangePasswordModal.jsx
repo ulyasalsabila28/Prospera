@@ -1,133 +1,150 @@
-/**
- * ChangePasswordModal.jsx — Modal ganti password
- * REFACTOR (F-T03): Diekstrak dari Sidebar.jsx untuk modularisasi.
- * Mengelola state form dan API call sendiri.
- */
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { apiFetch, formatError } from '../utils/api';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
+import { useToast } from '../contexts/ToastContext';
+
+const passwordSchema = z.object({
+    oldPassword: z.string().min(1, "Password lama wajib diisi."),
+    newPassword: z.string().min(6, "Password baru minimal 6 karakter.").max(64, "Maksimal 64 karakter."),
+    confirmPassword: z.string()
+}).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Konfirmasi password baru tidak cocok.",
+    path: ["confirmPassword"]
+}).refine((data) => data.oldPassword !== data.newPassword, {
+    message: "Password baru tidak boleh sama dengan yang lama.",
+    path: ["newPassword"]
+});
 
 export default function ChangePasswordModal({ show, onClose }) {
-    const [oldPassword, setOldPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
-    const [message, setMessage] = useState("");
-    const [messageType, setMessageType] = useState("");
+    const [showOldPassword, setShowOldPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const { showToast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const resetForm = () => {
-        setOldPassword("");
-        setNewPassword("");
-        setMessage("");
-        setMessageType("");
-    };
+    const {
+        register,
+        handleSubmit,
+        reset,
+        formState: { errors }
+    } = useForm({
+        resolver: zodResolver(passwordSchema),
+        defaultValues: {
+            oldPassword: "",
+            newPassword: "",
+            confirmPassword: ""
+        }
+    });
 
     const handleClose = () => {
-        resetForm();
+        reset();
+        setShowOldPassword(false);
+        setShowNewPassword(false);
+        setShowConfirmPassword(false);
         onClose();
     };
 
-    const handleSubmit = async () => {
-        setMessage("");
-
-        if (!oldPassword.trim()) {
-            setMessage("Password lama wajib diisi.");
-            setMessageType("error");
-            return;
-        }
-        if (!newPassword || newPassword.length < 6) {
-            setMessage("Password baru minimal 6 karakter.");
-            setMessageType("error");
-            return;
-        }
-        if (newPassword.length > 64) {
-            setMessage("Password baru maksimal 64 karakter.");
-            setMessageType("error");
-            return;
-        }
-        if (oldPassword === newPassword) {
-            setMessage("Password baru tidak boleh sama dengan yang lama.");
-            setMessageType("error");
-            return;
-        }
-
+    const onSubmit = async (data) => {
         setIsSubmitting(true);
         try {
-            const data = await apiFetch("/auth/change-password", {
+            const res = await apiFetch("/auth/change-password", {
                 method: "PUT",
-                body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+                body: JSON.stringify({ old_password: data.oldPassword, new_password: data.newPassword })
             });
-            setMessage(data.message || "Password berhasil diubah!");
-            setMessageType("success");
-            setOldPassword("");
-            setNewPassword("");
-
-            // Auto close modal setelah 2 detik jika sukses
+            showToast(res.message || "Password berhasil diubah!", 'success');
+            reset();
             setTimeout(() => handleClose(), 2000);
         } catch (err) {
-            setMessage(formatError(err));
-            setMessageType("error");
+            showToast(formatError(err), 'danger');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    if (!show) return null;
-
     return (
-        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}>
-            <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content shadow-lg border-0" style={{ borderRadius: '12px' }}>
-                    <div className="modal-header border-bottom-0 pb-0">
-                        <h5 className="modal-title fw-bold"><i className="fas fa-key me-2 text-primary"></i>Ganti Password</h5>
-                        <button type="button" className="btn-close" onClick={handleClose}></button>
-                    </div>
-                    <div className="modal-body py-4">
-                        {message && (
-                            <div className={`alert ${messageType === 'success' ? 'alert-success' : 'alert-danger'} py-2`} style={{ borderRadius: '8px', fontSize: '14px' }}>
-                                {message}
-                            </div>
-                        )}
-                        <div className="mb-3">
-                            <label className="form-label small fw-semibold text-muted">Password Lama</label>
-                            <input 
-                                type="password" 
-                                className="form-control" 
-                                placeholder="Masukkan password saat ini"
-                                value={oldPassword}
-                                onChange={(e) => setOldPassword(e.target.value)}
-                            />
-                        </div>
-                        <div className="mb-3">
-                            <label className="form-label small fw-semibold text-muted">Password Baru</label>
-                            <input 
-                                type="password" 
-                                className="form-control" 
-                                placeholder="Minimal 6 karakter, maksimal 64"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <div className="modal-footer border-top-0 pt-0 pb-4">
+        <Modal 
+            isOpen={show} 
+            onClose={handleClose} 
+            title={<><i className="fas fa-key me-2 text-primary"></i>Ganti Password</>}
+        >
+            
+            <form onSubmit={handleSubmit(onSubmit)}>
+                <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Password Lama</label>
+                    <div className="input-group">
+                        <input 
+                            type={showOldPassword ? "text" : "password"} 
+                            className={`form-control ${errors.oldPassword ? 'is-invalid' : ''}`}
+                            placeholder="Masukkan password saat ini"
+                            {...register("oldPassword")}
+                        />
                         <button 
+                            className="btn btn-outline-secondary" 
                             type="button" 
-                            className="btn btn-light px-4 py-2" 
-                            onClick={handleClose}
-                            style={{ borderRadius: '8px', fontWeight: '500' }}
+                            onClick={() => setShowOldPassword(!showOldPassword)}
+                            tabIndex="-1"
                         >
-                            Batal
+                            <i className={`fas ${showOldPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                         </button>
-                        <button 
-                            type="button" 
-                            className="btn btn-primary px-4 py-2" 
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            style={{ borderRadius: '8px', fontWeight: '500' }}
-                        >
-                            {isSubmitting ? "Menyimpan..." : "Simpan Password"}
-                        </button>
+                        {errors.oldPassword && <div className="invalid-feedback d-block">{errors.oldPassword.message}</div>}
                     </div>
                 </div>
-            </div>
-        </div>
+
+                <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Password Baru</label>
+                    <div className="input-group">
+                        <input 
+                            type={showNewPassword ? "text" : "password"} 
+                            className={`form-control ${errors.newPassword ? 'is-invalid' : ''}`}
+                            placeholder="Minimal 6 karakter"
+                            {...register("newPassword")}
+                        />
+                        <button 
+                            className="btn btn-outline-secondary" 
+                            type="button" 
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            tabIndex="-1"
+                        >
+                            <i className={`fas ${showNewPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        </button>
+                        {errors.newPassword && <div className="invalid-feedback d-block">{errors.newPassword.message}</div>}
+                    </div>
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Konfirmasi Password Baru</label>
+                    <div className="input-group">
+                        <input 
+                            type={showConfirmPassword ? "text" : "password"} 
+                            className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
+                            placeholder="Ulangi password baru"
+                            {...register("confirmPassword")}
+                        />
+                        <button 
+                            className="btn btn-outline-secondary" 
+                            type="button" 
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            tabIndex="-1"
+                        >
+                            <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        </button>
+                        {errors.confirmPassword && <div className="invalid-feedback d-block">{errors.confirmPassword.message}</div>}
+                    </div>
+                </div>
+
+                <div className="d-flex justify-content-end gap-2 mt-4">
+                    <Button variant="ghost" className="btn-light" onClick={handleClose}>
+                        Batal
+                    </Button>
+                    <Button type="submit" variant="primary" isLoading={isSubmitting}>
+                        Simpan Password
+                    </Button>
+                </div>
+            </form>
+        </Modal>
     );
 }

@@ -7,7 +7,7 @@
  * Jika ada bug fix atau perubahan filter, cukup ubah di satu tempat.
  */
 
-const { Transaction, TransactionDetail, Product, InventoryLog } = require("../models");
+const { Transaction, TransactionDetail, Product, InventoryLog, Category } = require("../models");
 const { Op, fn, col, literal } = require("sequelize");
 const { getDateFilter, buildWIBDateRange } = require("../utils/dateUtils");
 
@@ -131,18 +131,56 @@ const getProductBreakdown = async (startDate, endDate, userId, options = {}) => 
     const detailsData = await TransactionDetail.findAll({
         attributes,
         include: [
-            { model: Product, attributes: ["product_name"], required: true, paranoid: false },
+            { 
+                model: Product, 
+                attributes: ["product_name", "product_stock", "expired_date", "min_display_qty", "calculated_reorder_point"], 
+                required: true, 
+                paranoid: false,
+                include: [{ model: Category, attributes: ["category_name"] }]
+            },
             { model: Transaction, attributes: [], where: { ...getDateFilter(startDate, endDate), user_id_fk: userId, status: 'success' } }
         ],
         where: { transaction_type: 'sell' },
-        group: ["Product.product_id", "Product.product_name"],
+        group: [
+            "Product.product_id", 
+            "Product.product_name", 
+            "Product.product_stock", 
+            "Product.expired_date", 
+            "Product.min_display_qty", 
+            "Product.calculated_reorder_point",
+            "Product.Category.category_id",
+            "Product.Category.category_name"
+        ],
         order: [[literal("qty"), "DESC"]],
         raw: true
     });
 
     return detailsData.map(item => {
+        const stock = parseInt(item["Product.product_stock"]) || 0;
+        const reorderPoint = parseInt(item["Product.calculated_reorder_point"]) || 0;
+        
+        let aiStatus = "Aman";
+        if (stock === 0) {
+            aiStatus = "Habis";
+        } else if (stock <= reorderPoint) {
+            aiStatus = "Kritis";
+        }
+
+        let expiredStr = "-";
+        if (item["Product.expired_date"]) {
+            const dateObj = new Date(item["Product.expired_date"]);
+            const dd = String(dateObj.getDate()).padStart(2, '0');
+            const mm = String(dateObj.getMonth() + 1).padStart(2, '0'); // January is 0!
+            const yyyy = dateObj.getFullYear();
+            expiredStr = `${dd}/${mm}/${yyyy}`;
+        }
+
         const result = {
             name: item["Product.product_name"],
+            category: item["Product.Category.category_name"] || "Tanpa Kategori",
+            current_stock: stock,
+            ai_status: aiStatus,
+            expired_date: expiredStr,
             qty: parseInt(item.qty) || 0,
             // FIX (CRITICAL-02): parseInt untuk nilai uang berbasis BIGINT kolom DB
             subtotal: parseInt(item.subtotal) || 0

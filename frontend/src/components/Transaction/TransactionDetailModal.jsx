@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { formatRupiah, formatDatetime } from '../../utils/format';
+import { printReceipt } from '../../utils/transactionHelpers';
 
 /**
  * TransactionDetailModal.jsx
@@ -45,23 +46,15 @@ export default function TransactionDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="trx-modal-title"
-        style={{ width: "min(95%, 780px)", background: "white", borderRadius: "16px", padding: "24px", boxShadow: "0 16px 40px rgba(0,0,0,0.15)" }}
+        className="modal-content"
+        style={{ width: "min(95%, 780px)", borderRadius: "16px", padding: "24px", border: "none", boxShadow: "0 16px 40px rgba(0,0,0,0.3)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
           <div>
             <h3 id="trx-modal-title">Detail Transaksi</h3>
-            <p style={{ margin: 0, color: "#6B7280" }}>{formatDatetime(selectedTransaction.transaction_datetime)}</p>
+            <p style={{ margin: 0, color: "var(--bs-gray-500, #9ca3af)" }}>{formatDatetime(selectedTransaction.transaction_datetime)}</p>
           </div>
-          <button
-            ref={closeButtonRef}
-            className="button"
-            onClick={closeTransactionModal}
-            style={{ background: "#EF4444", color: "white" }}
-            aria-label="Tutup modal detail transaksi"
-          >
-            Tutup
-          </button>
         </div>
 
         <div style={{ marginBottom: "16px" }}>
@@ -102,6 +95,25 @@ export default function TransactionDetailModal({
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "24px" }}>
+          <button
+            className="button"
+            onClick={() => printReceipt(selectedTransaction)}
+            style={{ background: "white", color: "#10B981", border: "1px solid #10B981", padding: "6px 14px", fontSize: "13px" }}
+          >
+            <i className="fas fa-print me-2"></i>Cetak Struk
+          </button>
+          <button
+            ref={closeButtonRef}
+            className="button"
+            onClick={closeTransactionModal}
+            style={{ background: "#EF4444", color: "white", padding: "6px 14px", fontSize: "13px" }}
+            aria-label="Tutup modal detail transaksi"
+          >
+            Tutup
+          </button>
         </div>
       </div>
     </div>

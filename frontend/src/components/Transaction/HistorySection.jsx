@@ -7,13 +7,13 @@ export default function HistorySection({
   handleDateFilterChange, customStartDate, setCustomStartDate,
   customEndDate, setCustomEndDate, applyCustomDate,
   loading, filteredHistory, getTransactionTypeLabel, openTransactionModal,
-  historyPage, historyTotalPages, historyTotalItems, fetchHistory, handleExportExcel,
+  historyPage, historyTotalPages, historyTotalItems, fetchHistory, handleExportExcel, handleExportCsv,
   showReportModal, setShowReportModal
 }) {
   return (
     <div className="card">
       <div style={{ marginBottom: "16px" }}>
-        <h3 style={{ margin: 0, marginBottom: "16px", color: "#1F2937" }}>Riwayat Transaksi</h3>
+        <h3 style={{ margin: 0, marginBottom: "16px", color: "var(--bs-body-color)" }}>Riwayat Transaksi</h3>
         
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
           <div>
@@ -28,32 +28,32 @@ export default function HistorySection({
         
         <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
 
-          <div style={{ display: "flex", gap: "8px", background: "#F3F4F6", padding: "4px", borderRadius: "10px" }}>
-            <button onClick={() => setActiveTab("ALL")} style={{ padding: "6px 16px", border: "none", background: activeTab === "ALL" ? "white" : "transparent", color: activeTab === "ALL" ? "#1F2937" : "#6B7280", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "ALL" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Semua</button>
-            <button onClick={() => setActiveTab("SELL")} style={{ padding: "6px 16px", border: "none", background: activeTab === "SELL" ? "#22C55E" : "transparent", color: activeTab === "SELL" ? "white" : "#6B7280", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "SELL" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Penjualan</button>
-            <button onClick={() => setActiveTab("BUY")} style={{ padding: "6px 16px", border: "none", background: activeTab === "BUY" ? "#EF4444" : "transparent", color: activeTab === "BUY" ? "white" : "#6B7280", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "BUY" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Restock</button>
+          <div style={{ display: "flex", gap: "8px", background: "rgba(128, 128, 128, 0.1)", padding: "4px", borderRadius: "10px" }}>
+            <button onClick={() => setActiveTab("ALL")} style={{ padding: "6px 16px", border: "none", background: activeTab === "ALL" ? "var(--bs-primary)" : "transparent", color: activeTab === "ALL" ? "#fff" : "var(--bs-gray-500, #6B7280)", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "ALL" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Semua</button>
+            <button onClick={() => setActiveTab("SELL")} style={{ padding: "6px 16px", border: "none", background: activeTab === "SELL" ? "#10B981" : "transparent", color: activeTab === "SELL" ? "white" : "var(--bs-gray-500, #6B7280)", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "SELL" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Penjualan</button>
+            <button onClick={() => setActiveTab("BUY")} style={{ padding: "6px 16px", border: "none", background: activeTab === "BUY" ? "#EF4444" : "transparent", color: activeTab === "BUY" ? "white" : "var(--bs-gray-500, #6B7280)", borderRadius: "8px", fontWeight: "600", cursor: "pointer", boxShadow: activeTab === "BUY" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", transition: "all 0.2s" }}>Restock</button>
           </div>
 
           <div style={{ position: "relative" }}>
             <button 
               onClick={() => setIsDateMenuOpen(!isDateMenuOpen)}
               className="button"
-              style={{ background: "white", color: "#374151", border: "1px solid #D1D5DB", display: "flex", alignItems: "center", gap: "8px", padding: "6px 16px" }}
+              style={{ background: "var(--bs-body-bg)", color: "var(--bs-body-color)", border: "1px solid var(--bs-border-color)", display: "flex", alignItems: "center", gap: "8px", padding: "6px 16px" }}
             >
               📅 {dateFilterType === "ALL" ? "Semua Waktu" : dateFilterType === "TODAY" ? "Hari Ini" : dateFilterType === "MONTH" ? "Bulan Ini" : "Kustom"}
             </button>
 
             {isDateMenuOpen && (
-              <div style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", background: "white", border: "1px solid #E5E7EB", borderRadius: "12px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", zIndex: 50, width: "220px", padding: "12px" }}>
+              <div style={{ position: "absolute", top: "100%", right: 0, marginTop: "8px", background: "var(--bs-body-bg)", border: "1px solid var(--bs-border-color)", borderRadius: "12px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.3)", zIndex: 50, width: "220px", padding: "12px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <button onClick={() => handleDateFilterChange("ALL")} style={{ textAlign: "left", padding: "8px 12px", background: dateFilterType === "ALL" ? "#F3F4F6" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Semua Waktu</button>
-                  <button onClick={() => handleDateFilterChange("TODAY")} style={{ textAlign: "left", padding: "8px 12px", background: dateFilterType === "TODAY" ? "#F3F4F6" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Hari Ini</button>
-                  <button onClick={() => handleDateFilterChange("MONTH")} style={{ textAlign: "left", padding: "8px 12px", background: dateFilterType === "MONTH" ? "#F3F4F6" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Bulan Ini</button>
-                  <button onClick={() => setDateFilterType("CUSTOM")} style={{ textAlign: "left", padding: "8px 12px", background: dateFilterType === "CUSTOM" ? "#F3F4F6" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Pilih Manual...</button>
+                  <button onClick={() => handleDateFilterChange("ALL")} style={{ color: "var(--bs-body-color)", textAlign: "left", padding: "8px 12px", background: dateFilterType === "ALL" ? "rgba(128,128,128,0.1)" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Semua Waktu</button>
+                  <button onClick={() => handleDateFilterChange("TODAY")} style={{ color: "var(--bs-body-color)", textAlign: "left", padding: "8px 12px", background: dateFilterType === "TODAY" ? "rgba(128,128,128,0.1)" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Hari Ini</button>
+                  <button onClick={() => handleDateFilterChange("MONTH")} style={{ color: "var(--bs-body-color)", textAlign: "left", padding: "8px 12px", background: dateFilterType === "MONTH" ? "rgba(128,128,128,0.1)" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Bulan Ini</button>
+                  <button onClick={() => setDateFilterType("CUSTOM")} style={{ color: "var(--bs-body-color)", textAlign: "left", padding: "8px 12px", background: dateFilterType === "CUSTOM" ? "rgba(128,128,128,0.1)" : "transparent", border: "none", borderRadius: "6px", cursor: "pointer" }}>Pilih Manual...</button>
                 </div>
 
                 {dateFilterType === "CUSTOM" && (
-                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid #E5E7EB", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px solid var(--bs-border-color)", display: "flex", flexDirection: "column", gap: "8px" }}>
                     <div>
                       <label style={{ fontSize: "12px", color: "#6B7280", display: "block", marginBottom: "4px" }}>Dari:</label>
                       <input type="date" className="input" style={{ width: "100%", padding: "6px 8px" }} value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} />
@@ -153,6 +153,7 @@ export default function HistorySection({
         isOpen={showReportModal} 
         onClose={() => setShowReportModal(false)} 
         onExport={handleExportExcel} 
+        onExportCsv={handleExportCsv}
       />
     </div>
   );

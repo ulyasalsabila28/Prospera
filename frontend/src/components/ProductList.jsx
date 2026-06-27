@@ -5,7 +5,7 @@
 import { useMemo } from 'react';
 import { formatRupiah } from '../utils/format';
 
-export default function ProductList({ products, searchTerm, onSearchChange, categories, selectedCategory, onCategoryChange, role, onEdit, onDelete, pagination, onPageChange }) {
+export default function ProductList({ products, searchTerm, onSearchChange, categories, selectedCategory, onCategoryChange, role, onEdit, onDelete, deletingId, pagination, onPageChange }) {
     // PERFORMANCE FIX (F-S17): Memoize filter agar tidak dihitung ulang setiap render
     const filteredProducts = useMemo(() => {
         return products.filter(p => {
@@ -19,7 +19,7 @@ export default function ProductList({ products, searchTerm, onSearchChange, cate
     return (
         <div className="card">
             <div style={{ marginBottom: "16px" }}>
-                <h3 style={{ margin: 0, marginBottom: "16px", color: "#1F2937" }}>Daftar Produk</h3>
+                <h4 className="text-body fw-bold mb-3">Daftar Produk</h4>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                     <div>
                         <input 
@@ -71,8 +71,16 @@ export default function ProductList({ products, searchTerm, onSearchChange, cate
                                         <button className="button" style={{ marginRight: "8px" }} onClick={() => onEdit(p)}>
                                             Edit
                                         </button>
-                                        <button className="button-delete" onClick={() => onDelete(p.product_id || p.id)}>
-                                            Delete
+                                        <button 
+                                            className="button-delete" 
+                                            onClick={() => onDelete(p.product_id || p.id)}
+                                            disabled={deletingId === (p.product_id || p.id)}
+                                        >
+                                            {deletingId === (p.product_id || p.id) ? (
+                                                <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span></>
+                                            ) : (
+                                                "Delete"
+                                            )}
                                         </button>
                                     </div>
                                 )}

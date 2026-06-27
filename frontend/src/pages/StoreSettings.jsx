@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getStoreSettings, updateStoreSettings, formatError, getCurrentUser } from '../utils/api';
 import ErrorMessage from '../components/ErrorMessage';
+import { useToast } from '../contexts/ToastContext';
 
 export default function StoreSettings() {
     const [settings, setSettings] = useState({
@@ -11,9 +12,8 @@ export default function StoreSettings() {
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState('');
-    const [messageType, setMessageType] = useState('');
     const [error, setError] = useState('');
+    const { showToast } = useToast();
 
     const user = getCurrentUser();
 
@@ -53,19 +53,16 @@ export default function StoreSettings() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
-        setMessage('');
         try {
             const payload = { ...settings };
             if (!payload.emergency_pin) {
                 delete payload.emergency_pin; // Jangan update jika kosong
             }
             await updateStoreSettings(payload);
-            setMessage("Pengaturan toko berhasil diperbarui!");
-            setMessageType("success");
+            showToast("Pengaturan toko berhasil diperbarui!", 'success');
             setSettings(prev => ({ ...prev, emergency_pin: '' })); // Kosongkan kembali PIN
         } catch (err) {
-            setMessage(formatError(err));
-            setMessageType("danger");
+            showToast(formatError(err), 'danger');
         } finally {
             setSaving(false);
         }
@@ -83,13 +80,6 @@ export default function StoreSettings() {
         <div className="card border-0 shadow-sm">
             <div className="card-body p-4">
                 <h4 className="fw-bold mb-4"><i className="fas fa-store me-2 text-primary"></i>Pengaturan Toko</h4>
-
-                {message && (
-                    <div className={`alert alert-${messageType} d-flex align-items-center mb-4`}>
-                        <i className={`fas ${messageType === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2`}></i>
-                        <div>{message}</div>
-                    </div>
-                )}
 
                 <form onSubmit={handleSubmit}>
                     <div className="row mb-4">

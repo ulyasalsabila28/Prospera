@@ -39,6 +39,15 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* HIDE SCROLLBAR UTILITY */
+.hide-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+
 /* SIDEBAR ASLI */
 .sidebar {
     width: var(--sidebar-width);
@@ -144,15 +153,22 @@ html[data-bs-theme="dark"] .card:hover {
 }
 
 /* UI ELEMENTS */
-.input, .form-control {
+.input, .form-control, .form-select {
     border-radius: 10px;
     border: 1px solid var(--bs-border-color);
-    padding: 0.7rem 1rem;
     background-color: var(--bs-body-bg);
     color: var(--bs-body-color);
 }
 
-.input:focus, .form-control:focus {
+.input, .form-control {
+    padding: 0.7rem 1rem;
+}
+
+.form-select {
+    padding: 0.7rem 2.25rem 0.7rem 1rem;
+}
+
+.input:focus, .form-control:focus, .form-select:focus {
     box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
     border-color: var(--blue-medium);
     background-color: var(--bs-body-bg);
@@ -166,6 +182,15 @@ html[data-bs-theme="dark"] .card:hover {
     -webkit-box-shadow: 0 0 0 30px var(--bs-body-bg) inset !important;
     -webkit-text-fill-color: var(--bs-body-color) !important;
     transition: background-color 5000s ease-in-out 0s;
+}
+
+/* HIDE BROWSER NATIVE PASSWORD REVEAL ICONS (FOR CUSTOM TOGGLE) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+input[type="password"]::-webkit-reveal {
+    display: none;
 }
 
 .button, .btn-primary {
@@ -218,32 +243,177 @@ html[data-bs-theme="dark"] .card:hover {
     color: var(--bs-success-text-emphasis) !important;
 }
 
-/* LOGIN PAGE */
+/* === KASAIR SPLIT SCREEN DESIGN === */
 .login-page {
-    background: linear-gradient(to bottom right, var(--blue-primary), var(--blue-medium), var(--green-primary));
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-}
-
-.login-card {
-    width: 400px;
-    padding: 3rem !important;
-    border-radius: 24px;
     background-color: var(--bs-body-bg);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    text-align: center;
+    padding: 1rem;
 }
 
-.login-card .input {
+.login-container {
+    display: flex;
     width: 100%;
+    max-width: 1150px;
+    background: transparent;
+    gap: 5rem;
+    height: 680px; /* Memaksa tinggi mutlak agar gambar di Kiri konsisten */
+}
+
+.login-left {
+    flex: 1;
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    display: none;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    height: 100%;
+}
+
+@media (min-width: 992px) {
+    .login-left {
+        display: block;
+    }
+}
+
+.login-left img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.login-left-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.login-left-logo {
+    color: white;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.login-left-caption {
+    color: white;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    opacity: 0.9;
+}
+
+.login-right {
+    flex: 1.2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 1.5rem;
+}
+
+.login-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--bs-body-color);
+    margin-bottom: 0.25rem;
+}
+
+.login-subtitle {
+    color: #6B7280;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+}
+
+.prospera-form-group {
     margin-bottom: 1rem;
 }
 
-.login-card .button {
+.prospera-form-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #4B5563;
+    margin-bottom: 0.4rem;
+}
+
+.prospera-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.prospera-input-icon {
+    position: absolute;
+    left: 1.25rem;
+    color: #9CA3AF;
+}
+
+.prospera-input {
     width: 100%;
+    background-color: #F3F4F6 !important;
+    border: 1px solid transparent !important;
+    border-radius: 50rem !important;
+    padding: 0.75rem 1.25rem 0.75rem 3.25rem !important; /* Dikecilkan untuk form panjang */
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    color: #1F2937;
+}
+
+html[data-bs-theme="dark"] .prospera-input {
+    background-color: var(--bs-tertiary-bg) !important;
+    color: var(--bs-body-color);
+}
+
+.prospera-input:focus {
+    background-color: var(--bs-body-bg) !important;
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+}
+
+.prospera-btn {
+    background-color: #2563EB;
+    color: white;
+    border-radius: 50rem;
+    padding: 0.875rem 1.5rem;
+    border: none;
+    font-weight: 600;
+    width: 100%;
+    transition: all 0.3s ease;
     margin-top: 0.5rem;
+}
+
+.prospera-btn:hover:not(:disabled) {
+    background-color: #1D4ED8;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+}
+
+.prospera-link {
+    color: #2563EB;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.prospera-link:hover {
+    color: #1E40AF;
+}
+
+.prospera-eye-btn {
+    position: absolute;
+    right: 1rem;
+    background: transparent;
+    border: none;
+    color: #9CA3AF;
+    display: flex;
+    align-items: center;
 }
 
 /* PRODUCT PAGE (F-S01/F-S03: Mengganti inline styles) */
@@ -488,7 +658,7 @@ html[data-bs-theme="dark"] .modal-content {
 /* RESPONSIVE */
 @media (max-width: 1024px) {
     .sidebar { width: 80px; padding: 2rem 0.5rem; }
-    .sidebar .nav-text, .sidebar .logo span { display: none; }
+    .sidebar .nav-text, .sidebar .logo span, .sidebar .sidebar-user-info { display: none; }
     .main-content { margin-left: 80px; padding: 1.5rem; }
     .product-search { width: 100%; }
     .product-form-field { flex: 1 1 100%; }

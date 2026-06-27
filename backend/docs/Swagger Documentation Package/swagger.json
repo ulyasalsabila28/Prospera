@@ -1,0 +1,2908 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Prospera API",
+    "version": "1.0.0",
+    "description": "API Documentation for Prospera Backend"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Development Server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Operasi Autentikasi dan Manajemen Pengguna"
+    },
+    {
+      "name": "Products",
+      "description": "Operasi Manajemen Produk"
+    },
+    {
+      "name": "Transactions",
+      "description": "Operasi Manajemen Transaksi dan Kasir"
+    },
+    {
+      "name": "Analytics",
+      "description": "Operasi Analisis Penjualan dan Finansial"
+    },
+    {
+      "name": "Inventory",
+      "description": "Operasi Inventori Barang"
+    },
+    {
+      "name": "Forecast",
+      "description": "Operasi Prediksi Penjualan Pintar (AI)"
+    },
+    {
+      "name": "Categories",
+      "description": "Operasi Kategori Produk"
+    },
+    {
+      "name": "Store Settings",
+      "description": "Operasi Pengaturan Toko"
+    },
+    {
+      "name": "Smart Features",
+      "description": "Operasi Fitur Pintar Kedaluwarsa dan Anomali"
+    }
+  ],
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "summary": "Registrasi Akun Owner Baru",
+        "description": "Pendaftaran awal untuk UMKM / Toko baru. Pendaftar pertama akan otomatis memiliki peran (role) sebagai 'owner'.\n\n**Otorisasi (RBAC):** Publik (Tanpa Autentikasi)",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "examples": {
+                "register": {
+                  "$ref": "#/components/examples/RegisterExample"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Akun Owner berhasil dibuat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Akun Owner berhasil dibuat. Silakan login."
+                    },
+                    "userId": {
+                      "type": "integer",
+                      "example": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validasi gagal.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email sudah terdaftar.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login Pengguna",
+        "description": "Autentikasi pengguna (Owner/Karyawan) menggunakan Email dan Password untuk mendapatkan JWT Bearer Token.\n\n**Otorisasi (RBAC):** Publik (Tanpa Autentikasi)",
+        "tags": [
+          "Auth"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "examples": {
+                "login": {
+                  "$ref": "#/components/examples/LoginExample"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login Berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Login berhasil."
+                    },
+                    "token": {
+                      "type": "string",
+                      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "username": {
+                          "type": "string",
+                          "example": "prospera"
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "prospera01@gmail.com"
+                        },
+                        "role": {
+                          "type": "string",
+                          "example": "owner"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Autentikasi gagal (email/password salah).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/users": {
+      "get": {
+        "summary": "Melihat Daftar Semua Karyawan",
+        "description": "Menampilkan daftar seluruh karyawan milik toko Owner.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar karyawan berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "user_id": {
+                        "type": "integer",
+                        "example": 2
+                      },
+                      "username": {
+                        "type": "string",
+                        "example": "karyawan_budi"
+                      },
+                      "email": {
+                        "type": "string",
+                        "example": "budi@gmail.com"
+                      },
+                      "role": {
+                        "type": "string",
+                        "example": "karyawan"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akses ditolak (hanya owner yang diizinkan).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Membuat Akun Karyawan Baru",
+        "description": "Membuat akun baru dengan role 'karyawan' yang terhubung ke toko Owner.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Akun Karyawan berhasil dibuat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Akun karyawan \"karyawan_budi\" berhasil dibuat."
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akses ditolak (hanya owner yang diizinkan).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email sudah digunakan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/users/{id}": {
+      "delete": {
+        "summary": "Menghapus Akun Karyawan",
+        "description": "Menghapus akun karyawan tertentu berdasarkan ID.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID User Karyawan yang ingin dihapus",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Akun karyawan berhasil dihapus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Akun \"karyawan_budi\" berhasil dihapus."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Coba menghapus diri sendiri.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akses ditolak (hanya owner yang diizinkan).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pengguna tidak ditemukan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Edit karyawan",
+        "description": "Memperbarui data karyawan.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Berhasil diupdate"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/auth/delete": {
+      "delete": {
+        "summary": "Menghapus Akun Sendiri",
+        "description": "Menghapus akun pengguna yang sedang login beserta seluruh data produk terkait secara cascade.\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Akun berhasil dihapus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Akun Anda berhasil dihapus beserta seluruh data terkait."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Owner masih memiliki karyawan aktif.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "put": {
+        "summary": "Mengubah Password Akun",
+        "description": "Mengubah kata sandi untuk pengguna yang sedang aktif.\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "old_password",
+                  "new_password"
+                ],
+                "properties": {
+                  "old_password": {
+                    "type": "string",
+                    "example": "password123"
+                  },
+                  "new_password": {
+                    "type": "string",
+                    "example": "newsecurepass123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password berhasil diubah.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Password berhasil diubah."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Password lama tidak sesuai.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "summary": "Menampilkan Seluruh Produk",
+        "description": "Mengambil semua produk milik toko dengan dukungan paginasi, status stok, dan saran jumlah restock pintar (AI).\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Products"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Nomor halaman",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Jumlah item per halaman",
+            "schema": {
+              "type": "integer",
+              "default": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar produk berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalItems": {
+                      "type": "integer",
+                      "example": 45
+                    },
+                    "totalPages": {
+                      "type": "integer",
+                      "example": 5
+                    },
+                    "currentPage": {
+                      "type": "integer",
+                      "example": 1
+                    },
+                    "products": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/Product"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "stock_status": {
+                                "type": "string",
+                                "example": "AMAN"
+                              },
+                              "suggested_restock": {
+                                "type": "integer",
+                                "example": 12
+                              },
+                              "velocity": {
+                                "type": "number",
+                                "example": 0.45
+                              },
+                              "Category": {
+                                "$ref": "#/components/schemas/Category"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Menambahkan Produk Baru",
+        "description": "Menambahkan data produk baru ke dalam inventaris toko.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Products"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "product_name",
+                  "product_cost",
+                  "product_price",
+                  "product_stock"
+                ],
+                "properties": {
+                  "product_name": {
+                    "type": "string",
+                    "example": "Susu UHT Cokelat"
+                  },
+                  "product_cost": {
+                    "type": "integer",
+                    "example": 4500
+                  },
+                  "product_price": {
+                    "type": "integer",
+                    "example": 6000
+                  },
+                  "product_stock": {
+                    "type": "integer",
+                    "example": 50
+                  },
+                  "category_id_fk": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "expired_date": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-12-31"
+                  }
+                }
+              },
+              "examples": {
+                "createProduct": {
+                  "$ref": "#/components/examples/CreateProductExample"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Produk berhasil ditambahkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Produk berhasil ditambahkan ke toko Anda."
+                    },
+                    "productId": {
+                      "type": "integer",
+                      "example": 12
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validasi gagal (misal harga < 500, stok negatif, atau nama kembar).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akses ditolak (hanya owner yang diizinkan).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products/{id}": {
+      "get": {
+        "summary": "Menampilkan Detail Produk Spesifik",
+        "description": "Mengambil detail satu produk berdasarkan ID produk.\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Products"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Produk ditemukan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Product"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "Category": {
+                          "$ref": "#/components/schemas/Category"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Produk tidak ditemukan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Memperbarui Data Produk",
+        "description": "Memperbarui rincian data produk.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Products"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "product_name": {
+                    "type": "string",
+                    "example": "Susu UHT Cokelat Extra"
+                  },
+                  "product_cost": {
+                    "type": "integer",
+                    "example": 4700
+                  },
+                  "product_price": {
+                    "type": "integer",
+                    "example": 6500
+                  },
+                  "product_stock": {
+                    "type": "integer",
+                    "example": 60
+                  },
+                  "category_id_fk": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "expired_date": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-12-31"
+                  }
+                }
+              },
+              "examples": {
+                "updateProduct": {
+                  "$ref": "#/components/examples/UpdateProductExample"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Data produk berhasil diperbarui.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Data produk berhasil diperbarui."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akses ditolak (hanya owner yang diizinkan).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Produk tidak ditemukan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Menghapus Produk",
+        "description": "Melakukan penghapusan lunak (soft delete) produk.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "tags": [
+          "Products"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Produk berhasil dihapus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Produk berhasil dihapus."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Akses ditolak (hanya owner yang diizinkan).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Produk tidak ditemukan atau bukan milik Anda.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/transactions/checkout": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Melakukan Checkout Transaksi Penjualan",
+        "description": "Memproses transaksi penjualan barang (checkout) baru.\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              },
+              "examples": {
+                "checkout": {
+                  "$ref": "#/components/examples/CheckoutExample"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Checkout berhasil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Permintaan tidak valid (stok tidak cukup atau format salah).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/transactions/history": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Melihat Riwayat Transaksi",
+        "description": "Menampilkan daftar riwayat transaksi penjualan toko dengan filter halaman.\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Nomor halaman riwayat",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Batas item per halaman",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "description": "Tanggal mulai filter",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "description": "Tanggal akhir filter",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar riwayat transaksi berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "transaction_id": {
+                        "type": "integer"
+                      },
+                      "transaction_type": {
+                        "type": "string"
+                      },
+                      "cashier_id": {
+                        "type": "integer"
+                      },
+                      "total_amount": {
+                        "type": "integer"
+                      },
+                      "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/transactions/export": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Ekspor Riwayat Transaksi",
+        "description": "Mengunduh file ekspor seluruh riwayat transaksi penjualan.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "description": "Format file ekspor (csv / excel)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "excel"
+              ]
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "description": "Tanggal mulai filter",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "description": "Tanggal akhir filter",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "Format ekspor (excel/csv)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "excel",
+                "csv"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil mengunduh dokumen ekspor.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/transactions/summary": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Mendapatkan Ringkasan Transaksi",
+        "description": "Menampilkan akumulasi jumlah dan total nominal transaksi penjualan toko.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ringkasan transaksi berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "description": "Tanggal mulai filter",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "description": "Tanggal akhir filter",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ]
+      }
+    },
+    "/api/analytics/summary": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Mendapatkan Ringkasan Analitik Toko",
+        "description": "Mengambil data analitik performa toko secara keseluruhan (omset, profit, loss, dsb).\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ringkasan analitik berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/analytics/profit": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Mendapatkan Analisis Keuntungan (Profit)",
+        "description": "Menampilkan tren profitabilitas toko dari waktu ke waktu.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data profit berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total_profit": {
+                      "type": "integer",
+                      "example": 4500000
+                    },
+                    "profit_by_category": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "category_name": {
+                            "type": "string",
+                            "example": "Makanan"
+                          },
+                          "profit": {
+                            "type": "integer",
+                            "example": 2500000
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/analytics/top-product": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Mendapatkan Produk Terlaris",
+        "description": "Menampilkan daftar produk yang paling banyak terjual (volume tertinggi).\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar produk terlaris berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "product_id": {
+                        "type": "integer",
+                        "example": 1
+                      },
+                      "product_name": {
+                        "type": "string",
+                        "example": "Indomie Goreng"
+                      },
+                      "quantity_sold": {
+                        "type": "integer",
+                        "example": 120
+                      },
+                      "revenue": {
+                        "type": "integer",
+                        "example": 420000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/analytics/monthly": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Mendapatkan Analitik Performa Bulanan",
+        "description": "Mengambil data analitik historis performa toko per bulan.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data analitik bulanan berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "month": {
+                        "type": "string",
+                        "example": "2026-06"
+                      },
+                      "revenue": {
+                        "type": "integer",
+                        "example": 15000000
+                      },
+                      "profit": {
+                        "type": "integer",
+                        "example": 4500000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/analytics/loss-products": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Mendapatkan Produk Terjual Rugi (Loss Products)",
+        "description": "Mengidentifikasi produk yang dijual dengan kerugian atau margin negatif.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar produk terjual rugi berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "product_id": {
+                        "type": "integer",
+                        "example": 3
+                      },
+                      "product_name": {
+                        "type": "string",
+                        "example": "Roti Manis Kedaluwarsa"
+                      },
+                      "loss_amount": {
+                        "type": "integer",
+                        "example": 5000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/analytics/summary/export/excel": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Ekspor Ringkasan Analitik ke Excel",
+        "description": "Mengunduh file Excel berisi data ringkasan analitik toko.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil mengunduh dokumen Excel ringkasan analitik.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/analytics/summary/export/csv": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Ekspor Ringkasan Analitik ke CSV",
+        "description": "Mengunduh file CSV berisi data ringkasan analitik toko.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil mengunduh dokumen CSV ringkasan analitik.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/inventory/low-stock": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Mendapatkan Daftar Produk Stok Menipis",
+        "description": "Mengambil daftar inventori produk dengan stok yang berada di bawah tingkat ambang batas (low stock).\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar produk dengan stok menipis berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LowStockItem"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/forecast": {
+      "get": {
+        "tags": [
+          "Forecast"
+        ],
+        "summary": "Prediksi Penjualan Masa Depan (Forecasting)",
+        "description": "Menghasilkan prediksi penjualan masa depan berdasarkan pola transaksi historis.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hasil prediksi penjualan berhasil didapatkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ForecastResult"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Melihat Seluruh Kategori Produk",
+        "description": "Menampilkan daftar seluruh kategori produk yang ada di toko.\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar kategori berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Membuat Kategori Produk Baru",
+        "description": "Menambahkan kategori baru ke dalam daftar kategori produk toko.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Category"
+              },
+              "example": {
+                "category_name": "Minuman",
+                "requires_expired_date": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Kategori baru berhasil dibuat.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Kategori berhasil dibuat."
+                    },
+                    "category_id": {
+                      "type": "integer",
+                      "example": 5
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/categories/{id}": {
+      "put": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Memperbarui Kategori Produk",
+        "description": "Mengubah rincian nama atau aturan kedaluwarsa kategori produk berdasarkan ID.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID Kategori yang ingin diperbarui",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Category"
+              },
+              "example": {
+                "category_name": "Minuman Dingin",
+                "requires_expired_date": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Kategori berhasil diperbarui.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Kategori berhasil diperbarui."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Categories"
+        ],
+        "summary": "Menghapus Kategori Produk",
+        "description": "Menghapus kategori produk berdasarkan ID.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "ID Kategori yang ingin dihapus",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Kategori berhasil dihapus."
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/store-settings": {
+      "get": {
+        "tags": [
+          "Store Settings"
+        ],
+        "summary": "Melihat Pengaturan Toko",
+        "description": "Mengambil data konfigurasi/pengaturan toko saat ini.\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pengaturan toko berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSetting"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Store Settings"
+        ],
+        "summary": "Memperbarui Pengaturan Toko",
+        "description": "Mengubah konfigurasi jam buka, Grace Period, overtime, dsb.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreSetting"
+              },
+              "example": {
+                "open_hour": "08:00:00",
+                "close_hour": "22:00:00",
+                "grace_period_minutes": 30,
+                "is_overtime_active": false,
+                "emergency_pin": "123456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pengaturan toko berhasil diperbarui.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Pengaturan toko berhasil disimpan."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/smart-features/expiring": {
+      "get": {
+        "tags": [
+          "Smart Features"
+        ],
+        "summary": "Melihat Produk yang Mendekati Kedaluwarsa",
+        "description": "Mengambil daftar seluruh produk yang tanggal kedaluwarsanya sudah dekat.\n\n**Otorisasi (RBAC):** Owner | Karyawan\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar produk hampir kedaluwarsa berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Product"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/smart-features/apply-markdown": {
+      "put": {
+        "tags": [
+          "Smart Features"
+        ],
+        "summary": "Menerapkan Diskon Markdown Otomatis",
+        "description": "Menurunkan harga produk secara otomatis menggunakan logika markdown pintar agar terjual sebelum kedaluwarsa.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "product_ids",
+                  "percent"
+                ],
+                "properties": {
+                  "product_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Daftar ID produk yang akan didiskon"
+                  },
+                  "percent": {
+                    "type": "number",
+                    "description": "Persentase diskon markdown"
+                  }
+                }
+              },
+              "examples": {
+                "applyMarkdown": {
+                  "$ref": "#/components/examples/ApplyMarkdownExample"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Diskon markdown berhasil diterapkan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Markdown sebesar 20% berhasil diterapkan ke produk terpilih."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/smart-features/anomalies": {
+      "get": {
+        "tags": [
+          "Smart Features"
+        ],
+        "summary": "Melihat Daftar Anomali Penjualan",
+        "description": "Mengambil daftar laporan transaksi penjualan yang mencurigakan (anomali harga/margin).\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daftar tiket anomali berhasil diambil.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SmartFeatureAnomaly"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/smart-features/anomalies/resolve": {
+      "put": {
+        "tags": [
+          "Smart Features"
+        ],
+        "summary": "Menyelesaikan Tiket Anomali",
+        "description": "Memperbarui status tiket anomali penjualan menjadi terselesaikan (resolved) dengan catatan peninjauan.\n\n**Otorisasi (RBAC):** Owner Only\n**Keamanan:** Memerlukan JWT Token (Bearer Auth)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "resolved_by",
+                  "note"
+                ],
+                "properties": {
+                  "resolved_by": {
+                    "type": "integer",
+                    "description": "ID User Owner yang menyelesaikan anomali"
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Catatan peninjauan manual alasan penyelesaian"
+                  }
+                }
+              },
+              "examples": {
+                "resolveAnomaly": {
+                  "$ref": "#/components/examples/ResolveAnomalyExample"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tiket anomali berhasil diselesaikan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Tiket anomali berhasil diselesaikan."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/analytics/spoilage-log": {
+      "get": {
+        "tags": [
+          "Analytics"
+        ],
+        "summary": "Mendapatkan riwayat kerugian kedaluwarsa",
+        "description": "Mendapatkan log pemusnahan stok barang kedaluwarsa.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout pengguna",
+        "description": "Mengakhiri sesi pengguna saat ini.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil logout"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Mendapatkan data sesi",
+        "description": "Untuk hidrasi data sesi pengguna.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data pengguna"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/auth/users/{id}/reset-password": {
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Reset password karyawan",
+        "description": "Mereset sandi karyawan (Hanya Owner).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newPassword": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password dirubah"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/auth/complete-tour": {
+      "put": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Menandai tour selesai",
+        "description": "Memperbarui status tour UI untuk user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tour selesai"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/smart-features/expiry/write-off": {
+      "put": {
+        "tags": [
+          "Smart Features"
+        ],
+        "summary": "Write-off produk expired",
+        "description": "Memusnahkan atau membuang produk kedaluwarsa.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/transactions/unlock-overtime": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Unlock waktu shift",
+        "description": "Konfirmasi keamanan PIN untuk transaksi overtime.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pin": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Akses diizinkan"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Authentication required or token invalid",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Access denied",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "prospera"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "prospera01@gmail.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "password123"
+          },
+          "role": {
+            "type": "string",
+            "example": "owner"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Format E.164 (opsional)",
+            "example": "+6281234567890"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "prospera01@gmail.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "password123"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "token": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "username": {
+            "type": "string",
+            "example": "prospera"
+          },
+          "email": {
+            "type": "string",
+            "example": "prospera01@gmail.com"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "karyawan"
+            ],
+            "example": "owner"
+          },
+          "owner_id": {
+            "type": "integer",
+            "nullable": true,
+            "example": null
+          },
+          "phone_number": {
+            "type": "string",
+            "example": "+628123456789"
+          },
+          "is_active": {
+            "type": "boolean",
+            "example": true
+          },
+          "has_completed_tour": {
+            "type": "boolean",
+            "example": false
+          },
+          "overtime_unlocked_until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true,
+            "example": "secret123"
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "user_id_fk": {
+            "type": "integer",
+            "example": 1
+          },
+          "product_name": {
+            "type": "string",
+            "example": "Indomie Goreng"
+          },
+          "product_cost": {
+            "type": "integer",
+            "example": 2500
+          },
+          "product_price": {
+            "type": "integer",
+            "example": 3500
+          },
+          "product_stock": {
+            "type": "integer",
+            "example": 100
+          },
+          "category_id_fk": {
+            "type": "integer",
+            "example": 1
+          },
+          "expired_date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-12-31"
+          },
+          "min_display_qty": {
+            "type": "integer",
+            "example": 5
+          },
+          "calculated_reorder_point": {
+            "type": "integer",
+            "example": 10
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "user_id_fk": {
+            "type": "integer",
+            "example": 1
+          },
+          "category_name": {
+            "type": "string",
+            "example": "Makanan"
+          },
+          "requires_expired_date": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "StoreSetting": {
+        "type": "object",
+        "properties": {
+          "setting_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "user_id_fk": {
+            "type": "integer",
+            "example": 1
+          },
+          "open_hour": {
+            "type": "string",
+            "example": "08:00:00"
+          },
+          "close_hour": {
+            "type": "string",
+            "example": "22:00:00"
+          },
+          "grace_period_minutes": {
+            "type": "integer",
+            "example": 30
+          },
+          "is_overtime_active": {
+            "type": "boolean",
+            "example": false
+          },
+          "emergency_pin": {
+            "type": "string",
+            "example": "hashed_pin_value_here"
+          }
+        }
+      },
+      "TransactionRequest": {
+        "type": "object",
+        "properties": {
+          "transaction_type": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "example": "sell"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "product_id": {
+                  "type": "integer"
+                },
+                "quantity": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "product_id",
+                "quantity"
+              ]
+            },
+            "example": [
+              {
+                "product_id": 1,
+                "quantity": 2
+              }
+            ]
+          }
+        }
+      },
+      "TransactionSummary": {
+        "type": "object",
+        "properties": {
+          "total_transaction": {
+            "type": "integer",
+            "example": 120
+          },
+          "total_amount": {
+            "type": "integer",
+            "example": 5000000
+          }
+        }
+      },
+      "AnalyticsSummary": {
+        "type": "object",
+        "properties": {
+          "total_transaction": {
+            "type": "integer",
+            "example": 80
+          },
+          "items_sold": {
+            "type": "integer",
+            "example": 230
+          },
+          "revenue": {
+            "type": "integer",
+            "example": 15000000
+          },
+          "total_profit": {
+            "type": "integer",
+            "example": 4500000
+          },
+          "total_loss": {
+            "type": "integer",
+            "example": 120000
+          },
+          "average_sale": {
+            "type": "integer",
+            "example": 187500
+          },
+          "revenue_growth": {
+            "type": "string",
+            "example": "12.5%"
+          }
+        }
+      },
+      "ForecastResult": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Prediksi penjualan harian (7 hari terakhir, tanpa outlier, hanya transaksi sukses)"
+          },
+          "prediction": {
+            "type": "string",
+            "example": "Rp 320000"
+          }
+        }
+      },
+      "LowStockItem": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "example": 1
+          },
+          "product_name": {
+            "type": "string",
+            "example": "Indomie Goreng"
+          },
+          "product_stock": {
+            "type": "integer",
+            "example": 3
+          },
+          "min_display_qty": {
+            "type": "integer",
+            "example": 5
+          },
+          "calculated_reorder_point": {
+            "type": "integer",
+            "example": 10
+          }
+        }
+      },
+      "SmartFeatureAnomaly": {
+        "type": "object",
+        "properties": {
+          "ticket_id": {
+            "type": "integer",
+            "example": 2
+          },
+          "transaction_id": {
+            "type": "integer",
+            "example": 11
+          },
+          "datetime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-06-25T07:00:00Z"
+          },
+          "cashier": {
+            "type": "string",
+            "example": "Karyawan1"
+          },
+          "product": {
+            "type": "string",
+            "example": "Susu UHT Cokelat"
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 2
+          },
+          "capital_cost": {
+            "type": "integer",
+            "example": 4000
+          },
+          "selling_price": {
+            "type": "integer",
+            "example": 4050
+          },
+          "margin_percentage": {
+            "type": "string",
+            "example": "1.25"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Margin sangat tipis atau jual rugi (1.25%)"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED",
+              "DISMISSED"
+            ],
+            "example": "OPEN"
+          },
+          "resolution_note": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "resolved_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "example": null
+          },
+          "resolved_by": {
+            "type": "integer",
+            "nullable": true,
+            "example": null
+          },
+          "user_id_fk": {
+            "type": "integer"
+          },
+          "anomaly_type": {
+            "type": "string",
+            "example": "spoilage_detected"
+          },
+          "reference_id": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Terjadi kesalahan internal sistem yang tidak terduga."
+          }
+        }
+      }
+    },
+    "examples": {
+      "RegisterExample": {
+        "summary": "Register request example",
+        "value": {
+          "username": "owner_prospera",
+          "email": "owner@example.com",
+          "password": "strongpassword123",
+          "role": "owner"
+        }
+      },
+      "LoginExample": {
+        "summary": "Login request example",
+        "value": {
+          "email": "owner@example.com",
+          "password": "strongpassword123"
+        }
+      },
+      "CreateProductExample": {
+        "summary": "Create product example",
+        "value": {
+          "product_name": "Susu UHT Cokelat",
+          "product_cost": 4500,
+          "product_price": 6000,
+          "product_stock": 50,
+          "category_id_fk": 1,
+          "expired_date": "2026-12-31"
+        }
+      },
+      "UpdateProductExample": {
+        "summary": "Update product example",
+        "value": {
+          "product_name": "Susu UHT Cokelat Extra",
+          "product_cost": 4700,
+          "product_price": 6500,
+          "product_stock": 60,
+          "category_id_fk": 1,
+          "expired_date": "2026-12-31"
+        }
+      },
+      "CheckoutExample": {
+        "summary": "Checkout example",
+        "value": {
+          "transaction_type": "sell",
+          "cashier_id": 2,
+          "items": [
+            {
+              "product_id": 1,
+              "qty": 2
+            },
+            {
+              "product_id": 2,
+              "qty": 1
+            }
+          ],
+          "payment_type": "cash"
+        }
+      },
+      "ApplyMarkdownExample": {
+        "summary": "Apply markdown example",
+        "value": {
+          "product_ids": [
+            1,
+            2
+          ],
+          "percent": 20
+        }
+      },
+      "ResolveAnomalyExample": {
+        "summary": "Resolve anomaly example",
+        "value": {
+          "resolved_by": 2,
+          "note": "False positive, manual review"
+        }
+      }
+    }
+  }
+}

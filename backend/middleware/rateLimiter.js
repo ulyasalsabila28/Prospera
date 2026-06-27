@@ -11,4 +11,11 @@ const authLimiter = rateLimit(AUTH_RATE_LIMIT);
 // Limiter umum untuk seluruh endpoint API
 const apiLimiter = rateLimit(API_RATE_LIMIT);
 
-module.exports = { authLimiter, apiLimiter };
+// Limiter sangat ketat untuk endpoint export CSV/Excel (DDoS / Denial of Wallet Protection)
+const exportLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 menit
+    max: 100, // Diperlonggar untuk keperluan testing/development
+    message: { message: "Batas permintaan export tercapai. Silakan tunggu 1 menit sebelum mencoba lagi." }
+});
+
+module.exports = { authLimiter, apiLimiter, exportLimiter };
