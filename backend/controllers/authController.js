@@ -76,7 +76,7 @@ const login = async (req, res, next) => {
         );
 
         // Injeksi JWT ke dalam HttpOnly Cookie (Anti-XSS & Anti-CSRF)
-        res.cookie('token', token, {
+        res.cookie('jwt', token, {
             httpOnly: true,
             secure: true,            // WAJIB TRUE: Agar bisa dikirim lewat HTTPS internet
             sameSite: 'none',        // WAJIB NONE: Agar frontend Netlify bisa menerima cookie dari Railway
