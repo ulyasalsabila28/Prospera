@@ -85,7 +85,7 @@ app.use(cors({
 }));
 
 // 2. FIX SAKTI: Tangani langsung request preflight OPTIONS agar tidak kena 404
-app.options('*', cors()); 
+app.options('(.*)', cors());
 
 // ... (middleware express.json() atau rute API kamu baru diletakkan di bawah sini)
 
