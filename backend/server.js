@@ -71,8 +71,8 @@ app.use(cookieParser());
 // X-Request-ID ditambahkan juga agar frontend bisa membaca requestId dari error response.
 app.use(cors({
     origin: typeof CORS_ORIGIN === 'string' 
-        ? [CORS_ORIGIN, 'http://127.0.0.1:5173', 'https://poetic-selkie-f79a9f.netlify.app'] 
-        : ['http://127.0.0.1:5173', 'https://poetic-selkie-f79a9f.netlify.app'],
+        ? [CORS_ORIGIN, 'http://127.0.0.1:5173', 'https://prospera-gold.vercel.app'] 
+        : ['http://127.0.0.1:5173', 'https://prospera-gold.vercel.app'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key', 'X-Request-ID'],
     exposedHeaders: ['X-Request-ID'], // Izinkan frontend membaca header ini dari response
