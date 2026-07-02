@@ -71,13 +71,14 @@ app.use(cookieParser());
 // X-Request-ID ditambahkan juga agar frontend bisa membaca requestId dari error response.
 
 // 1. Definisikan middleware CORS kamu
+// Cukup pastikan ini berada di paling atas sebelum rute API kamu
 app.use(cors({
     origin: [
         'http://127.0.0.1:5173', 
         'http://localhost:5173', 
         'https://prospera-gold.vercel.app'
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Tambahkan OPTIONS di sini
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key', 'X-Request-ID'],
     exposedHeaders: ['X-Request-ID'],
     credentials: true
