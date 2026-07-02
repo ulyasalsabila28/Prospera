@@ -84,9 +84,6 @@ app.use(cors({
     credentials: true
 }));
 
-// 2. FIX SAKTI: Tangani langsung request preflight OPTIONS agar tidak kena 404
-app.options('(.*)', cors());
-
 // ... (middleware express.json() atau rute API kamu baru diletakkan di bawah sini)
 
 // Layer 3: Rate Limiter Global — Anti DDoS untuk seluruh endpoint API
