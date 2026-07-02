@@ -70,7 +70,9 @@ app.use(cookieParser());
 // (Line 35: req.headers['x-idempotency-key']) tidak pernah berfungsi.
 // X-Request-ID ditambahkan juga agar frontend bisa membaca requestId dari error response.
 app.use(cors({
-    origin: typeof CORS_ORIGIN === 'string' ? [CORS_ORIGIN, 'http://127.0.0.1:5173'] : CORS_ORIGIN,
+    origin: typeof CORS_ORIGIN === 'string' 
+        ? [CORS_ORIGIN, 'http://127.0.0.1:5173', 'https://poetic-selkie-f79a9f.netlify.app'] 
+        : ['http://127.0.0.1:5173', 'https://poetic-selkie-f79a9f.netlify.app'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key', 'X-Request-ID'],
     exposedHeaders: ['X-Request-ID'], // Izinkan frontend membaca header ini dari response
