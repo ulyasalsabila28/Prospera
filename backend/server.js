@@ -69,17 +69,25 @@ app.use(cookieParser());
 // controller, sehingga sistem anti-transaksi-duplikat di transactionController.js
 // (Line 35: req.headers['x-idempotency-key']) tidak pernah berfungsi.
 // X-Request-ID ditambahkan juga agar frontend bisa membaca requestId dari error response.
+const app = express();
+
+// 1. Definisikan middleware CORS kamu
 app.use(cors({
     origin: [
         'http://127.0.0.1:5173', 
         'http://localhost:5173', 
         'https://prospera-gold.vercel.app'
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Tambahkan OPTIONS di sini
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Idempotency-Key', 'X-Request-ID'],
     exposedHeaders: ['X-Request-ID'],
     credentials: true
 }));
+
+// 2. FIX SAKTI: Tangani langsung request preflight OPTIONS agar tidak kena 404
+app.options('*', cors()); 
+
+// ... (middleware express.json() atau rute API kamu baru diletakkan di bawah sini)
 
 // Layer 3: Rate Limiter Global — Anti DDoS untuk seluruh endpoint API
 app.use('/api', apiLimiter);
