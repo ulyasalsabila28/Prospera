@@ -76,11 +76,11 @@ const login = async (req, res, next) => {
         );
 
         // Injeksi JWT ke dalam HttpOnly Cookie (Anti-XSS & Anti-CSRF)
-        res.cookie('jwt', token, {
+        res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax', // Cross-port CSRF protection
-            maxAge: 24 * 60 * 60 * 1000 // 1 Hari
+            secure: true,            // WAJIB TRUE: Agar bisa dikirim lewat HTTPS internet
+            sameSite: 'none',        // WAJIB NONE: Agar frontend Netlify bisa menerima cookie dari Railway
+            maxAge: 24 * 60 * 60 * 1000 // Sesuaikan dengan durasi lama token kamu
         });
 
         res.status(200).json({
