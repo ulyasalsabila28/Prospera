@@ -69,7 +69,6 @@ app.use(cookieParser());
 // controller, sehingga sistem anti-transaksi-duplikat di transactionController.js
 // (Line 35: req.headers['x-idempotency-key']) tidak pernah berfungsi.
 // X-Request-ID ditambahkan juga agar frontend bisa membaca requestId dari error response.
-const app = express();
 
 // 1. Definisikan middleware CORS kamu
 app.use(cors({
